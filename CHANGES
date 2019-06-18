@@ -1,6 +1,29 @@
+Version 1.1.9
+-------------
+- Bug fixes (reported by Martin Raszyk, Joshua Schneider, and Dmitriy Traytel):
+
+  * "NOT PREVIOUS phi" and "NOT NEXT phi" were wrongly rewritten to
+    "PREVIOUS NOT phi" and "NEXT NOT phi". Such subformulas are not
+    rewritten anymore.
+
+  * The attributes of the relations computed for subformulas phi =
+    "alpha SINCE_I beta" have the wrong order if the left-to-right
+    order of variables in phi differs from that in beta. Same for
+    "alpha UNTIL_I beta". The attributes for such phi subformulas are
+    now those of beta followed by those of alpha.
+
+  * In some cases, MonPoly was outputting satisfactions also for the
+    virtually added maximal time-stamp. For this virtual timestamp no
+    output is now produced.
+
 Version 1.1.8
 -------------
-- Small bug fixes.
+- Bug fixes (reported by Étienne André):
+
+  There were indeed some inconsistencies the typing of the fields of
+  the tp, ts, and tpts predicates. Now they should be consistent: the
+  tp field should be an integer, while the ts field should be a
+  rational (for both ts and tpts predicates).
 
 Version 1.1.7
 -------------

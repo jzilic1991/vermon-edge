@@ -1,5 +1,5 @@
 BIN = ~/bin/
-VER = 1.1.8
+VER = 1.1.9
 USERNAME ?= $(shell bash -c 'read -r -p "Username: " uuu; echo $$uuu')
 IMAGENAME ?= $(shell bash -c 'read -r -p "Image name: " iii; echo $$iii')
 
