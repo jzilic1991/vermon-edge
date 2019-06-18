@@ -1,0 +1,12 @@
+S(a,b,c) AND (a = b + 2)
+S(a,b,c) AND (a = 1 + b + 2)
+S(a,b,c) AND (a + 1 = 1 + b)
+S(a,b,c) AND (a = b + c)
+S(a,b,c) AND (a + c = b + a)
+S(a,b,c) AND (x = 1 + b + c)
+S(a,b,c) AND (x = a + b + c)
+S(a,b,c) AND (x + 1 = b + c)
+S(a,b,c) AND (x = a * a - 2 * b + c)
+S(a,b,c) AND (x = a / b)
+S(a,b,c) AND NOT (a = b + 2)
+

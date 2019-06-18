@@ -1,0 +1,68 @@
+P(x) AND Q(x)
+P(x) OR Q(x)
+P(x) OR Q(y) (* a domain dependent formula *)
+(EXISTS b. R(a,b)) AND P(a)
+(EXISTS x. ((x=0) AND EXISTS x.P(x))) AND P(x)
+
+T()
+R(y,x)
+P(x)
+
+
+NEXT[0,30] P(x)
+PREVIOUS[0,30] P(x)
+
+
+NEXT[0,30] NEXT[0,30] P(x)
+NEXT[0,30] PREVIOUS[0,30] P(x)
+PREVIOUS[0,30] PREVIOUS[0,30] P(x)
+PREVIOUS[0,30] NEXT[0,30] P(x)
+
+NEXT[0,30] NEXT[0,30] NEXT[0,30] P(x)
+NEXT[0,30] NEXT[0,30] PREVIOUS[0,30] P(x)
+NEXT[0,30] PREVIOUS[0,30] NEXT[0,30] P(x)
+NEXT[0,30] PREVIOUS[0,30] PREVIOUS[0,30] P(x)
+PREVIOUS[0,30] NEXT[0,30] NEXT[0,30] P(x)
+PREVIOUS[0,30] NEXT[0,30] PREVIOUS[0,30] P(x)
+PREVIOUS[0,30] PREVIOUS[0,30] NEXT[0,30] P(x)
+PREVIOUS[0,30] PREVIOUS[0,30] PREVIOUS[0,30] P(x)
+
+P(x) SINCE[0,30] Q(x)
+P(x) SINCE[1,10] R(y,x)
+(0=0) SINCE[0,*] P(x)
+
+ONCE[0,0] P(x)
+ONCE[0,10] P(x)
+ONCE[0,*] P(x)
+ONCE[1,10] P(x)
+ONCE[1,9] P(x)
+
+NEXT[0,30] (P(x) SINCE[0,30] Q(x))
+PREVIOUS[0,30] (P(x) SINCE[0,30] Q(x))
+
+P(x) SINCE[0,30] NEXT[0,30] Q(x)
+P(x) SINCE[0,30] PREVIOUS[0,30] Q(x)
+
+PREVIOUS[0,30] PREVIOUS[0,30] (P(x) SINCE[0,30] Q(x))
+
+
+P(x) UNTIL[0,10] Q(x)
+P(x) UNTIL[1,10] R(x,y)
+NEXT[0,30] (P(x) UNTIL[0,10] Q(x))
+NEXT[0,30] NEXT[0,30] (P(x) UNTIL[0,10] Q(x))
+P(x) UNTIL[1,9] Q(x)
+
+(NOT P(x)) UNTIL[0,10] R(x,y)
+(NOT P(x)) UNTIL[1,10] R(x,y)
+(NOT P(x)) UNTIL[0,9] R(x,y)
+(NOT P(x)) UNTIL[1,9] R(x,y)
+
+0 = 0 UNTIL[0,0] P(x)
+EVENTUALLY[0,0] P(x)
+EVENTUALLY[0,10] P(x)
+EVENTUALLY[1,10] P(x)
+EVENTUALLY[1,9] P(x)
+
+EVENTUALLY[1,10] NEXT P(x)
+EVENTUALLY[1,10] PREVIOUS P(x)
+

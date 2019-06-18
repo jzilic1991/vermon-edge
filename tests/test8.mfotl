@@ -1,0 +1,2 @@
+(Q(a) AND (0 = 0 UNTIL[0,50] P(b)))
+(Q(a) AND (EVENTUALLY[0,50] P(b)))

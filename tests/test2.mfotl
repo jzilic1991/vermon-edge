@@ -1,0 +1,9 @@
+S(a,b,c) AND (NOT ((b = 0)))
+S(a,b,c) AND (NOT (b = c))
+S(a,b,c) AND (b = c)
+S(a,b,c) AND (b = 0)
+S(a,b,c) AND (0 = b)
+S(a,b,c) AND (1 = 0)
+S(a,b,c) AND (0 = 0)
+
+
