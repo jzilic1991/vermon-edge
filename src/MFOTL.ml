@@ -217,8 +217,8 @@ let rec free_vars = function
   | Once (intv,f) -> free_vars f
   | Always (intv,f) -> free_vars f
   | PastAlways (intv,f) -> free_vars f
-  | Since (intv,f1,f2) -> Misc.union (free_vars f1) (free_vars f2)
-  | Until (intv,f1,f2) -> Misc.union (free_vars f1) (free_vars f2)
+  | Since (intv,f1,f2) -> Misc.union (free_vars f2) (free_vars f1)
+  | Until (intv,f1,f2) -> Misc.union (free_vars f2) (free_vars f1)
 
 
 let string_of_ts ts =
@@ -394,5 +394,3 @@ let print_formula str f =
 let printnl_formula str f =
   print_formula str f;
   print_newline()
-
-
