@@ -11,7 +11,7 @@ At time point 6:
 @0. (time point 0): ((13))
 At time point 7:
 @1. (time point 1): ((13),(14))
-@2. (time point 2): ((13),(14))
+@2. (time point 2): ((10),(13),(14))
 @3. (time point 3): ((11),(13),(14))
 @4. (time point 4): ((11),(12),(13),(14))
 @5. (time point 5): ((10),(11),(14))

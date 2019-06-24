@@ -457,7 +457,7 @@ At time point 1:
 At time point 2:
 @100. (time point 0): ((5,0))
 At time point 3:
-@110. (time point 1): ((5,0))
+@110. (time point 1): ((3,5),(5,0))
 -----
 The analyzed formula is:
   (NOT P(x)) UNTIL[1,10] R(x,y)
@@ -467,7 +467,7 @@ At time point 1:
 At time point 2:
 @100. (time point 0): ((5,0))
 At time point 3:
-@110. (time point 1): ()
+@110. (time point 1): ((5,0))
 -----
 The analyzed formula is:
   (NOT P(x)) UNTIL[0,9] R(x,y)
@@ -476,9 +476,9 @@ At time point 0:
 At time point 1:
 @100. (time point 0): ()
 At time point 2:
-@110. (time point 1): ((5,0))
+@110. (time point 1): ((3,5),(5,0))
 At time point 3:
-@120. (time point 2): ()
+@120. (time point 2): ((3,5),(5,0))
 -----
 The analyzed formula is:
   (NOT P(x)) UNTIL[1,9] R(x,y)
