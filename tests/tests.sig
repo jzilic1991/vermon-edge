@@ -14,3 +14,6 @@ b(int)
 c(int)
 
 q(int, int)
+
+r()
+s()

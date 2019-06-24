@@ -88,25 +88,37 @@ let length l =
 
 let get_first l =
   if l.length = 0 then
-    raise Empty_dllist
+    begin
+      Printf.printf "[Dllist.get_first] internal error\n";
+      raise Empty_dllist
+    end
   else
     l.tail.next.data
 
 let get_last l =
   if l.length = 0 then
-    raise Empty_dllist
+    begin
+      Printf.printf "[Dllist.get_last] internal error\n";
+      raise Empty_dllist
+    end
   else
     l.tail.data
 
 let get_first_cell l =
   if l.length = 0 then
-    raise Empty_dllist
+    begin
+      Printf.printf "[Dllist.get_first_cell] internal error\n";
+      raise Empty_dllist
+    end
   else
     l.tail.next
 
 let get_last_cell l =
   if l.length = 0 then
-    raise Empty_dllist
+    begin
+      Printf.printf "[Dllist.get_last_cell] internal error\n";
+      raise Empty_dllist
+    end
   else
     l.tail
 
@@ -114,12 +126,18 @@ let get_last_cell l =
 
 let is_first l cell =
   if l.length = 0 then
-    raise Empty_dllist;
+    begin
+      Printf.printf "[Dllist.is_first] internal error\n";
+      raise Empty_dllist
+    end;
   cell == l.tail.next
 
 let is_last l cell =
   if l.length = 0 then
-    raise Empty_dllist;
+    begin
+      Printf.printf "[Dllist.is_last] internal error\n";
+      raise Empty_dllist
+    end;
   cell == l.tail
 
 
@@ -141,7 +159,11 @@ let get_data cell =
 
 
 let pop_first l =
-  if l.length = 0 then raise Empty_dllist;
+  if l.length = 0 then
+    begin
+      Printf.printf "[Dllist.pop_first] internal error\n";
+      raise Empty_dllist
+    end;
   l.length <- l.length - 1;
   let tail = l.tail in
   let head = tail.next in
@@ -154,7 +176,11 @@ let pop_first l =
 
 
 let pop_last l =
-  if l.length = 0 then raise Empty_dllist;
+  if l.length = 0 then
+    begin
+      Printf.printf "[Dllist.pop_last] internal error\n";
+      raise Empty_dllist
+    end;
   l.length <- l.length - 1;
   let tail = l.tail in
   let head = tail.next in
@@ -255,7 +281,10 @@ let get_index cell l =
     iter tail.next;
     !i
   else
-    failwith "[Dllist.get_index] empty list"
+    begin
+      Printf.printf "[Dllist.get_index] internal error\n";
+      raise Empty_dllist
+    end
 
 let get_cell_at_index i l =
   if l.length > 0 then
@@ -279,7 +308,10 @@ let get_cell_at_index i l =
     else
       cell
   else
-    raise Empty_dllist
+    begin
+      Printf.printf "[Dllist.get_cell_at_index] internal error\n";
+      raise Empty_dllist
+    end
 
 
 let rec iterrev_cond_delete iter_cond f del_cond l =
