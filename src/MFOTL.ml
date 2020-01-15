@@ -236,15 +236,19 @@ let string_of_ts ts =
 let print_ts ts =
   print_string (string_of_ts ts)
 
-let print_interval (a,b) =
+let string_of_interval (a,b) =
   (match a with
-   | OBnd a -> Printf.printf "(%.0f," a
-   | CBnd a -> Printf.printf "[%.0f," a
-   | Inf -> Printf.printf "(*,");
-  match b with
-  | OBnd b -> Printf.printf "%.0f)" b
-  | CBnd b -> Printf.printf "%.0f]" b
-  | Inf -> Printf.printf "*)"
+    | OBnd a -> Printf.sprintf "(%.0f," a
+    | CBnd a -> Printf.sprintf "[%.0f," a
+    | Inf -> Printf.sprintf "(*,")
+  ^
+  (match b with
+  | OBnd b -> Printf.sprintf "%.0f)" b
+  | CBnd b -> Printf.sprintf "%.0f]" b
+  | Inf -> Printf.sprintf "*)")
+
+let print_interval (a,b) =
+  Printf.printf "%s" (string_of_interval (a,b))
 
 let string_of_agg_op = function
   | Cnt -> "CNT"

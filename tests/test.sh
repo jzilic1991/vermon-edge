@@ -14,7 +14,7 @@ fi
 
 # echo "Using $mon for tests"
 
-for i in `seq 1 27`; do
+for i in `seq 1 28`; do
     if [ -e "$dir/test$i.out" ]; then
         rm "$dir/test$i.out"
     fi
@@ -44,7 +44,10 @@ for i in `seq 1 27`; do
 done
 
 if [ -s $dir/errors.txt ]; then
-    echo "There were errors: see errors.txt"
+    diff -q $dir/errors.txt $dir/errors.res
+    if [ $? -ne 0 ]; then  
+        echo "There were errors: see errors.txt"
+    fi
 else
     rm $dir/errors.txt
 fi

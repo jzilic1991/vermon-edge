@@ -135,6 +135,7 @@ val string_of_agg_op: agg_op -> string
 
 val string_of_ts: timestamp -> string
 val print_ts: timestamp -> unit
+val string_of_interval: interval -> string
 val print_interval: interval -> unit
 val print_formula: string -> formula -> unit
 val printnl_formula: string -> formula -> unit
