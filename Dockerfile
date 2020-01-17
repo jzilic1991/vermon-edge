@@ -26,5 +26,5 @@ ADD . ${WDIR}
 RUN sudo chown -R opam:opam . \
     && eval `opam config env` \
     && make \
-    && make clean \
-    && sudo cp ./monpoly /usr/local/bin/monpoly 
+    && sudo cp ./monpoly /usr/local/bin/monpoly \
+    && make clean 
