@@ -148,7 +148,7 @@ let main () =
               Algorithm.test_filter !logfile pf
             else
               (* start monitoring *)
-              Algorithm.monitor !logfile pf
+              Algorithm.monitor sign !logfile pf
           end
       end
 

@@ -14,7 +14,7 @@ fi
 
 # echo "Using $mon for tests"
 
-for i in `seq 1 28`; do
+for i in `seq 1 29`; do
     if [ -e "$dir/test$i.out" ]; then
         rm "$dir/test$i.out"
     fi

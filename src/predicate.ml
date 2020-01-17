@@ -159,7 +159,7 @@ let eval_gterm t = eval_term [] t
 
 let avg a b =
   match a, b with
-  | Int x, Int y -> Int ((x+y)/2)
+  | Int x, Int y -> Float (((float_of_int x) +. (float_of_int y)) /. 2.)
   | Float x, Float y -> Float ((x+.y)/.2.)
   | _ -> failwith "[Predicate.fmed] type error"
 
@@ -230,8 +230,8 @@ let rec string_of_term term =
     let b', str = match term with
       | Var v -> true, v
       | Cst c -> true, string_of_cst true c
-      | F2i t ->  false, "f2i" ^ (t2s' t)
-      | I2f t ->  false, "i2f" ^ (t2s' t)
+      | F2i t ->  false, "f2i(" ^ (t2s true t) ^ ")"
+      | I2f t ->  false, "i2f(" ^ (t2s true t) ^ ")"
       | UMinus t ->  false, "-" ^ (t2s' t)
       | Plus (t1, t2) -> false, (t2s' t1) ^ " + " ^ (t2s' t2)
       | Minus (t1, t2) -> false, (t2s' t1) ^ " - " ^ (t2s' t2)

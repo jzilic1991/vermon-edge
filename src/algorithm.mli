@@ -42,6 +42,7 @@
 (** This module implements the monitoring algorithm. *)
 
 open MFOTL
+open Db
 
 val resumefile: string ref
 val dumpfile: string ref
@@ -51,12 +52,12 @@ val dumpfile: string ref
 (** [resume log] loads the monitor state from file [resumefile] and
     then monitors the log [log]. *)
 
-val monitor_string: string -> formula -> unit
+val monitor_string: schema -> string -> formula -> unit
 (** [monitor log f] monitors the log string [log] with regard to the
     formula [f]. For each time point, it outputs, as soon as possible,
     the tuples satisfying formula [f]. *)
 
-val monitor: string -> formula -> unit
+val monitor: schema -> string -> formula -> unit
 (** [monitor log f] monitors the log [log] with regard to the
     formula [f]. For each time point, it outputs, as soon as possible,
     the tuples satisfying formula [f]. *)

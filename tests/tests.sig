@@ -17,3 +17,7 @@ q(int, int)
 
 r()
 s()
+
+I(x:int)
+F(x:float)
+W(x:string)
