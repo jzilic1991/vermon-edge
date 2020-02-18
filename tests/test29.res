@@ -205,6 +205,11 @@ The analyzed formula is:
   (r <- MED x; x I(x)) AND t = f2i(r)
 The sequence of free variables is: (r,x,t)
 At time point 0:
+@0. (time point 0): ((7,7,7),(8,8,8))
+At time point 1:
+@0. (time point 1): ()
+At time point 2:
+@0. (time point 2): ()
 -----
 The analyzed formula is:
   (r <- AVG x; x F(x)) AND t = f2i(r)
