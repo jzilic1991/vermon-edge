@@ -1,5 +1,5 @@
 The analyzed formula is:
-  S(a,b,c) AND NOT b = 0
+  S(a,b,c) AND (NOT b = 0)
 The sequence of free variables is: (a,b,c)
 At time point 0:
 @100. (time point 0): ()
@@ -11,7 +11,7 @@ At time point 3:
 @130. (time point 3): ((1,2,3),(3,5,6))
 -----
 The analyzed formula is:
-  S(a,b,c) AND NOT b = c
+  S(a,b,c) AND (NOT b = c)
 The sequence of free variables is: (a,b,c)
 At time point 0:
 @100. (time point 0): ()

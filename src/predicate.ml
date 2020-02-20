@@ -208,6 +208,9 @@ let print_tcst t =
   | TStr -> print_string "string"
   | TFloat -> print_string "float"
 
+let string_of_var var =
+  var
+
 let string_of_cst qm c =
   match c with
   | Int i -> string_of_int i
@@ -248,6 +251,9 @@ let rec string_of_term term =
   t2s true term
 
 let print_term t = print_string (string_of_term t)
+
+let string_of_predicate (p,ar,args) =
+  string_of_var p ^ Misc.string_of_list string_of_term args
 
 let print_predicate (p,ar,args) =
   print_var p;

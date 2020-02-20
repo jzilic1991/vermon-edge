@@ -50,7 +50,7 @@ At time point 3:
 The input formula is:
   (NOT ((NEXT[0,0] r()) OR NEXT[0,0] s())) UNTIL[0,0] r()
 The analyzed formula is:
-  ((NOT NEXT[0,0] r()) AND NOT NEXT[0,0] s()) UNTIL[0,0] r()
+  ((NOT NEXT[0,0] r()) AND (NOT NEXT[0,0] s())) UNTIL[0,0] r()
 The sequence of free variables is: ()
 At time point 0:
 At time point 1:

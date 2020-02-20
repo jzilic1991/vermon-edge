@@ -44,7 +44,7 @@ At time point 3:
 @130. (time point 3): ((3),(5))
 -----
 The analyzed formula is:
-  (EXISTS x. (x = 0 AND EXISTS x. P(x))) AND P(x)
+  (EXISTS x. (x = 0 AND (EXISTS x. P(x)))) AND P(x)
 The sequence of free variables is: (x)
 At time point 0:
 @100. (time point 0): ((2),(3),(4))

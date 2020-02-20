@@ -231,7 +231,7 @@ The analyzed formula is neither safe-range.
 By the way, the analyzed formula is not TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT 0 = 0
+  T() AND (NOT 0 = 0)
 The sequence of free variables is: ()
 At time point 0:
 @100. (time point 0): false
@@ -239,7 +239,7 @@ At time point 1:
 @200. (time point 1): false
 -----
 The analyzed formula is:
-  T() AND NOT 0 = 1
+  T() AND (NOT 0 = 1)
 The sequence of free variables is: ()
 At time point 0:
 @100. (time point 0): true
@@ -247,44 +247,44 @@ At time point 1:
 @200. (time point 1): false
 -----
 The analyzed formula is:
-  T() AND NOT x = 0
+  T() AND (NOT x = 0)
 The sequence of free variables is: (x)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT x = 0
+  T() AND (NOT x = 0)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 The analyzed formula is neither safe-range.
 By the way, the analyzed formula is not TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT 0 = x
+  T() AND (NOT 0 = x)
 The sequence of free variables is: (x)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT 0 = x
+  T() AND (NOT 0 = x)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 The analyzed formula is neither safe-range.
 By the way, the analyzed formula is not TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT x = x
+  T() AND (NOT x = x)
 The sequence of free variables is: (x)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT x = x
+  T() AND (NOT x = x)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 However, the input (and also the analyzed) formula is safe-range, 
 hence one should be able to rewrite it into a monitorable formula.
 By the way, the analyzed formula is TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT x = y
+  T() AND (NOT x = y)
 The sequence of free variables is: (x,y)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT x = y
+  T() AND (NOT x = y)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 The analyzed formula is neither safe-range.
 By the way, the analyzed formula is not TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT 0 < 0
+  T() AND (NOT 0 < 0)
 The sequence of free variables is: ()
 At time point 0:
 @100. (time point 0): true
@@ -292,7 +292,7 @@ At time point 1:
 @200. (time point 1): false
 -----
 The analyzed formula is:
-  T() AND NOT 0 < 1
+  T() AND (NOT 0 < 1)
 The sequence of free variables is: ()
 At time point 0:
 @100. (time point 0): false
@@ -300,47 +300,47 @@ At time point 1:
 @200. (time point 1): false
 -----
 The analyzed formula is:
-  T() AND NOT x < 0
+  T() AND (NOT x < 0)
 The sequence of free variables is: (x)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT x < 0
+  T() AND (NOT x < 0)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 The analyzed formula is neither safe-range.
 By the way, the analyzed formula is not TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT x < 1
+  T() AND (NOT x < 1)
 The sequence of free variables is: (x)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT x < 1
+  T() AND (NOT x < 1)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 The analyzed formula is neither safe-range.
 By the way, the analyzed formula is not TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT 5 < x
+  T() AND (NOT 5 < x)
 The sequence of free variables is: (x)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT 5 < x
+  T() AND (NOT 5 < x)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 However, the input (and also the analyzed) formula is safe-range, 
 hence one should be able to rewrite it into a monitorable formula.
 By the way, the analyzed formula is TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT x < x
+  T() AND (NOT x < x)
 The sequence of free variables is: (x)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT x < x
+  T() AND (NOT x < x)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 The analyzed formula is neither safe-range.
 By the way, the analyzed formula is not TSF safe-range.
 -----
 The analyzed formula is:
-  T() AND NOT x < y
+  T() AND (NOT x < y)
 The sequence of free variables is: (x,y)
 The analyzed formula is NOT monitorable, because of the subformula:
-  T() AND NOT x < y
+  T() AND (NOT x < y)
 In subformulas of the form psi AND t1 op t2 or psi AND NOT t1 op t2, with op among =, <, <=, either the variables of the terms t1 and t2 are among the free variables of psi or the formula is of the form psi AND x = t or psi AND x = t, and the variables of the term t are among the free variables of psi.
 The analyzed formula is neither safe-range.
 By the way, the analyzed formula is not TSF safe-range.

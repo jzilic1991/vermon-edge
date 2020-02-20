@@ -79,7 +79,7 @@ At time point 0:
 At time point 1:
 -----
 The analyzed formula is:
-  S(a,b,c) AND NOT a = b + 2
+  S(a,b,c) AND (NOT a = b + 2)
 The sequence of free variables is: (a,b,c)
 At time point 0:
 @100. (time point 0): ((10,1,2),(10,3,3),(10,4,6),(10,7,0),(10,10,1))

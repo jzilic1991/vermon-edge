@@ -12,7 +12,7 @@ At time point 4:
 @40. (time point 3): ()
 -----
 The analyzed formula is:
-  Q(a) AND EVENTUALLY[0,50] P(b)
+  Q(a) AND (EVENTUALLY[0,50] P(b))
 The sequence of free variables is: (a,b)
 At time point 0:
 At time point 1:
