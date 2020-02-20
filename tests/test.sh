@@ -30,7 +30,7 @@ for i in `seq 1 30`; do
         # cat $ff
         # echo "---"
         $mon -sig $dir/tests.sig -formula $ff -log $dir/test$i.log \
-            -verbose -nofilteremptytp -nonewlastts \
+            -verbose -nofilterrel -nofilteremptytp -nonewlastts \
             >> $dir/test$i.out 2>> $dir/errors.txt
         echo "-----" >> $dir/test$i.out
         rm $ff
