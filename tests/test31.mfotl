@@ -1,0 +1,1 @@
+(r <- CNT x;x ONCE (W(x) AND ONCE I(y))) AND t = i2f(r)
