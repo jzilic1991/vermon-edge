@@ -38,16 +38,11 @@
  *)
 
 
-
-open Unix
-open Misc
-open MFOTL
-
 let start_time = Unix.time()
 let last_time_q = ref start_time
 let last_time_i = ref start_time
 
-let min_diff = 0.
+(* let min_diff = 0. *)
 let q_step = ref 1000
 let i_step = 1000
 let next_alarm = 300
@@ -88,7 +83,7 @@ let show_results q tsq =
 
 
 
-let check_log i last_ts =
+let _check_log i last_ts =
   if i mod i_step = 0 then
     begin
       Printf.eprintf "check_log: loop %6d" i;
@@ -102,7 +97,7 @@ let check_log i last_ts =
       last_time_i := now
     end
 
-let check_log i last_ts = ()
+let check_log _i _last_ts = ()
 
 let check_log_end i last_ts =
   Printf.eprintf "check_log: last loop %6d" i;
@@ -120,4 +115,3 @@ let dump_stats starttime =
     times.tms_utime times.tms_stime
     (times.tms_utime +. times.tms_stime);
   Printf.printf "===STATS=== mem: %s kB\n" (Misc.mem_max ())
-

@@ -38,15 +38,8 @@
  *)
 
 
-
 open Misc
-open Predicate
 open MFOTL
-open Formula_parser
-open Lexing
-open Algorithm
-open Log
-open Rewriting
 
 
 (********** testing *************)
@@ -111,8 +104,6 @@ let sigalrm_handler =
 
 let displayver = ref false
 
-let version = Version.ver
-
 
 let main () =
   Sys.set_signal Sys.sigusr1 sigusr1_handler;
@@ -122,7 +113,7 @@ let main () =
   Misc.split_debug !debug;
 
   if !displayver then
-    print_endline ("MonPoly, version " ^ version)
+    print_endline ("MonPoly, version " ^ Version.version)
   else if !formulafile = "" then
     print_endline usage_string
   else
@@ -184,6 +175,3 @@ let _ =
     prerr_endline (Misc.mem_max ());
   if !statsarg then
     Perf.dump_stats starttime
-
-
-

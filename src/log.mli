@@ -42,7 +42,6 @@
 
 open MFOTL
 open Db
-open Log_parser
 
 
 val log_open : string -> Lexing.lexbuf

@@ -70,16 +70,11 @@
 *)
 
 
-open Dllist
 open Misc
-open Perf
 open Predicate
 open MFOTL
 open Tuple
 open Relation
-open Table
-open Db
-open Log
 open Sliding
 
 module NEval = Dllist
@@ -100,7 +95,7 @@ type oainfo = {mutable ores: relation;
 
 module IntMap = Map.Make (
   struct type t = cst
-   let compare = Pervasives.compare
+   let compare = Stdlib.compare
   end)
 
 type t_agg =
@@ -378,7 +373,7 @@ let print_einfn str inf =
 
 let print_extf str ff =
   let print_spaces d =
-    for i = 1 to d do print_string " " done
+    for _i = 1 to d do print_string " " done
   in
   let rec print_f_rec d f =
     print_spaces d;
@@ -574,7 +569,7 @@ let update_since intv tsq auxrels comp discard rel1 rel2 =
   let rec elim_old_auxrels () =
     (* remove old elements that felt out of the interval *)
     if not (Mqueue.is_empty auxrels) then
-      let (tsj,relj) = Mqueue.top auxrels in
+      let (tsj,_relj) = Mqueue.top auxrels in
       if not (MFOTL.in_left_ext (MFOTL.ts_minus tsq tsj) intv) then
         begin
           ignore(Mqueue.pop auxrels);
@@ -660,7 +655,7 @@ let update_once_zero intv q tsq inf rel2 discard =
   let rec elim_old_ozauxrels () =
     (* remove old elements that fell out of the interval *)
     if not (Dllist.is_empty auxrels) then
-      let (_, tsj, arel) = Dllist.get_first auxrels in
+      let (_, tsj, _arel) = Dllist.get_first auxrels in
       if not (MFOTL.in_left_ext (MFOTL.ts_minus tsq tsj) intv) then
         begin
           if inf.ozlast != Dllist.void && inf.ozlast == Dllist.get_first_cell auxrels then
@@ -903,7 +898,7 @@ let update_until q tsq i tsi intv rel1 rel2 inf comp discard =
   inf.saux <- nsaux
 
 
-let elim_old_eventually q tsq intv inf =
+let elim_old_eventually tsq intv inf =
   let auxrels = inf.eauxrels in
 
   let rec elim_old_eauxrels () =
@@ -1527,11 +1522,6 @@ let rec eval f neval crt discard =
     else
       None
 
-
-
-
-
-
   | EEventuallyZ (intv,f2,inf) ->
     (* contents of inf:
        elastev: 'a NEval.cell  last cell of neval for which f2 is evaluated
@@ -1638,14 +1628,14 @@ let rec eval f neval crt discard =
     (* we could in principle do this update less often: that is, we
        can do after each evaluation, but we need to find out the
        value of ts_{q+1} *)
-    elim_old_eventually q tsq intv inf;
+    elim_old_eventually tsq intv inf;
 
     let rec e_update () =
       if neval_is_last neval inf.elastev then
         None
       else
         let ncrt = neval_get_crt neval inf.elastev crt q in
-        let (i,tsi) = NEval.get_data ncrt in
+        let (_i,tsi) = NEval.get_data ncrt in
         (* Printf.printf "[eval,Eventually] e_update: ncrt.i = %d\n%!" i; *)
         if not (MFOTL.in_left_ext (MFOTL.ts_minus tsi tsq) intv) then
           (* we have the lookahead, we can compute the result *)
@@ -1823,30 +1813,6 @@ let process_index ff closed neval i =
   eval_loop ()
 
 
-
-
-
-let comp_aggreg init_value update posx posG rel =
-  let map = ref Tuple_map.empty in
-  Relation.iter
-    (fun tuple ->
-       let gtuple = Tuple.projections posG tuple in
-       let crt_value = Tuple.get_at_pos tuple posx in
-       (*   match Tuple.get_at_pos tuple posx with *)
-       (*     | Int v -> v *)
-       (*     | _ -> failwith "[comp_aggreg] internal error" *)
-       (* in *)
-       try
-         let old_agg_value = Tuple_map.find gtuple !map in
-         let new_agg_value = update old_agg_value crt_value in
-         map := Tuple_map.add gtuple new_agg_value !map
-       with
-       | Not_found ->
-         map := Tuple_map.add gtuple (init_value crt_value) !map;
-    )
-    rel;
-  !map
-
 let comp_aggreg init_value update posx posG rel =
   let map = Hashtbl.create 1000 in
   Relation.iter
@@ -1967,7 +1933,7 @@ let rec add_ext dbschema f =
     let ff1 = add_ext dbschema f1 in
     let attr1 = MFOTL.free_vars f1 in
     let pos = List.map (fun v -> Misc.get_pos v attr1) vl in
-    let pos = List.sort Pervasives.compare pos in
+    let pos = List.sort Stdlib.compare pos in
     let comp = Relation.project_away pos in
     EExists (comp,ff1)
 
@@ -2189,8 +2155,8 @@ let rec add_ext dbschema f =
   | Aggreg (y, (Max as op), x, glist, Once (intv, f)) as ff ->
 
     let get_comp_func = function
-      | Min -> (fun x y -> - (Pervasives.compare x y))
-      | Max -> (fun x y -> Pervasives.compare x y)
+      | Min -> (fun x y -> - (Stdlib.compare x y))
+      | Max -> (fun x y -> Stdlib.compare x y)
       | _ -> failwith "[add_ext, AggMMOnce] internal error"
     in
 
@@ -2211,7 +2177,7 @@ let rec add_ext dbschema f =
 
        The first condition is ensured by default, as timestamps are
        non-decreasing. We have to enforce the second and third
-       consitions. *)
+       conditions. *)
     let rec update_list_new tsq cst dllist =
       if not (Dllist.is_empty dllist) then
         begin
@@ -2296,7 +2262,7 @@ let rec add_ext dbschema f =
 
 
 
-  | Aggreg (y, Avg, x, glist, f) ->
+  | Aggreg (_y, Avg, x, glist, f) ->
     let attr = MFOTL.free_vars f in
     let posx = Misc.get_pos x attr in
     let posG = List.map (fun z -> Misc.get_pos z attr) glist in
@@ -2328,7 +2294,7 @@ let rec add_ext dbschema f =
     in
     EAggreg (comp, add_ext dbschema f)
 
-  | Aggreg (y, Med, x, glist, f)  ->
+  | Aggreg (_y, Med, x, glist, f)  ->
     let attr = MFOTL.free_vars f in
     let posx = Misc.get_pos x attr in
     let posG = List.map (fun z -> Misc.get_pos z attr) glist in
@@ -2348,7 +2314,7 @@ let rec add_ext dbschema f =
         let map = comp_map rel in
         let new_rel = ref Relation.empty in
         Hashtbl.iter (fun tuple (len, vlist) ->
-            let vlist = List.sort Pervasives.compare vlist in
+            let vlist = List.sort Stdlib.compare vlist in
             let med = Misc.median vlist len fmed in
             new_rel := Relation.add (Tuple.add_first tuple med) !new_rel;
           ) map;
@@ -2363,7 +2329,7 @@ let rec add_ext dbschema f =
     let posG = List.map (fun z -> Misc.get_pos z attr) glist in
     let init_value, update =
       match op with
-      | Cnt -> (fun v -> Int 1),
+      | Cnt -> (fun _v -> Int 1),
                (fun ov _ -> match ov with
                   | Int ov -> Int (ov + 1)
                   | _ -> failwith "[add_ext, Aggreg] internal error")
@@ -2587,7 +2553,7 @@ let test_filter logfile f =
   let lexbuf = Log.log_open logfile in
   let rec loop f i =
     match Log.get_next_entry lexbuf with
-    | Some (tp,ts,db) ->
+    | Some (tp,_ts,_db) ->
       loop f tp
     | None ->
       Printf.printf "end of log, processed %d time points\n" (i - 1)

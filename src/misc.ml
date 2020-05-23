@@ -74,8 +74,6 @@ let nsplit str sep =
 (* End Theft *)
 
 
-open Dllist
-
 
 let usr2 = ref false
 let alrm = ref false
@@ -162,7 +160,7 @@ let rec elim_elem x = function
 let rec add_in_sorted x = function
   | [] -> [x]
   | h :: t ->
-    if Pervasives.compare x h < 0
+    if compare x h < 0
     then x :: h :: t
     else h :: (add_in_sorted x t)
 
@@ -303,16 +301,12 @@ let remove_duplicates l =
   rm [] l
 
 
-
-
 let conjunction l = List.fold_left (&&) true l
-
-
 
 
 (* split a list in two at certain position *)
 (* split_at_n 1 [a;b;c] = [a],[b;c] *)
-let rec split_at_n n l =
+let split_at_n n l =
   let rec split first n = function
     | [] ->
       if n=0 then
@@ -394,85 +388,6 @@ let rec zip l1 l2 = match l1, l2 with
   | _ -> []
 
 
-
-
-
-
-
-
-
-
-
-(*** Apparently these functions are not used anymore ***)
-
-
-
-
-let remove_at_pos pos l =
-  let rec remove_pos' i first = function
-    | h::t ->
-      if i=pos then
-        first@t
-      else
-        remove_pos' (i+1) (first@[h]) t
-    | [] -> failwith "[Misc.remove_pos] position not found"
-  in remove_pos' 0 [] l
-
-
-
-(* delete the elements which satisfy the predicate p *)
-let delete p l = List.filter (fun x -> not (p x)) l
-
-
-
-(* returns true iff t1 is a (non-strict) prefix of t2 *)
-let rec prefix_of l1 l2 =
-  match l1,l2 with
-  | [],_ -> true
-  | h1::t1,h2::t2 when h1=h2 -> prefix_of t1 t2
-  | _ -> false
-
-
-let filter2 f l =
-  let rec filter2' acc = function
-    | [] -> List.rev acc
-    | h::t ->
-      let b,h' = f h in
-      if b then
-        filter2' (h'::acc) t
-      else
-        filter2' acc t
-  in
-  filter2' [] l
-
-
-(* equivalent with: List.map g (List.filter f l)) *)
-let rec filter_map f g = function
-  | h::t ->
-    if f h then
-      (g h)::(filter_map f g t)
-    else
-      filter_map f g t
-  | [] -> []
-
-
-(* equivalent with:
-   let l1,l2 = List.partition p l in
-   (List.map g l1), l2
-*)
-let partition_map p f l =
-  let rec part res = function
-    | [] -> res,[]
-    | h::t ->
-      if p h then
-        part ((f h)::res) t
-      else
-        let l1, l2 = part res t in
-        l1, h::l2
-  in
-  part [] l
-
-
 (* return current memory usage *)
 let mem_usage mem_str =
   let p = Unix.getpid() in
@@ -496,7 +411,6 @@ let mem_usage mem_str =
   in find_mem ic
 
 let mem_current () = mem_usage "VmSize"
-let mem_max () = mem_usage "VmPeak"
 
 (* return maximum memory usage *)
 let mem_max () =

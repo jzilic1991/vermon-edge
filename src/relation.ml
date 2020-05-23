@@ -38,11 +38,8 @@
  *)
 
 
-
-open Misc
 open Tuple
 open Predicate
-open MFOTL
 
 
 module Tuple_set = Set.Make (
@@ -96,7 +93,7 @@ let make_relation list =
   in make Tuple_set.empty list
 
 
-let map f rel =
+let _map f rel =
   let res = ref (Tuple_set.empty) in
     Tuple_set.iter
       (fun t ->
@@ -127,17 +124,17 @@ let frel = Tuple_set.empty
 
 let eval_equal t1 t2 =
   match t1,t2 with
-  | Var x, Cst c
-  | Cst c, Var x -> make_relation [Tuple.make_tuple [c]]
+  | Var _, Cst c
+  | Cst c, Var _ -> make_relation [Tuple.make_tuple [c]]
   | Cst c, Cst c' when c = c' -> trel
-  | Cst c, Cst c' -> frel
+  | Cst _, Cst _ -> frel
   | _ -> failwith "[Relation.eval_equal] (x=y)"
 
 let eval_not_equal t1 t2 =
   match t1,t2 with
   | Var x, Var y when x = y -> frel
   | Cst c, Cst c' when c = c' -> frel
-  | Cst c, Cst c' -> trel
+  | Cst _, Cst _ -> trel
   | _ -> failwith "[Relation.eval_not_equal] (x <> y)"
 
 
@@ -212,7 +209,7 @@ let natural_join_sc1 matches rel1 rel2 =
   Tuple_set.iter (fun t2 ->
     let t1_list =
       List.map
-  (fun (pos1, pos2) ->
+  (fun (_pos1, pos2) ->
     (* x is at pos1 in t1 and at pos2 in t2 *)
     Tuple.get_at_pos t2 pos2)
   matches
@@ -233,7 +230,7 @@ let natural_join_sc2 matches rel1 rel2 =
     let t2 = Tuple.make_tuple (
       List.map
   (* x is at pos2 in t2 and at pos1 in t1 *)
-  (fun (pos2, pos1) -> Tuple.get_at_pos t1 pos1)
+  (fun (_pos2, pos1) -> Tuple.get_at_pos t1 pos1)
   matches)
     in
     if Tuple_set.mem t2 rel2 then
@@ -271,7 +268,7 @@ let minus posl rel1 rel2 =
 (* given the "predicate formula" [p] and a relation [rel] ("having the
    same signature" as [p]), obtain the relation containing those
    tuples of [rel] which satisfy [p] *)
-let selectp p rel =
+let _selectp p rel =
   let res = ref Tuple_set.empty in
     Tuple_set.iter
       (fun t ->
@@ -301,7 +298,7 @@ let no_constraints tlist =
       else (* new variable, we record its position *)
         iter (x :: vars) tlist
 
-    | _ :: tlist -> false  (* there are constraints *)
+    | _ :: _tlist -> false  (* there are constraints *)
   in
   iter [] tlist
 

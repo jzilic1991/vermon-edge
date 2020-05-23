@@ -38,9 +38,6 @@
  *)
 
 
-
-open Misc
-
 type var = string
 type cst =
   | Int of int
@@ -78,15 +75,15 @@ type predicate = var * int * term list
    we assume that rigid predicates are binary
    hence a restiction hint is a pair of positions
 *)
-type rhint = int * int
+(* type rhint = int * int *) (* TODO: not used, remove? *)
 
 let make_predicate (name,args) =
   (name, List.length args, args)
 
 
 let get_info p = p
-let get_name (name,ar,args) = name
-let get_args (name,ar,args) = args
+let get_name (name,_ar,_args) = name
+let get_args (_name,_ar,args) = args
 
 
 let type_of_cst = function
@@ -94,10 +91,10 @@ let type_of_cst = function
   | Str _ -> TStr
   | Float _ -> TFloat
 
-(* TODO: whould we return a set instead? *)
+(* TODO: should we return a set instead? *)
 let rec tvars = function
   | Var v -> [v]
-  | Cst c -> []
+  | Cst _c -> []
   | F2i t | I2f t | UMinus t -> tvars t
   | Plus (t1, t2)
   | Minus (t1, t2)
@@ -189,7 +186,7 @@ let cst_smaller c c' =
   | Str a, Str a' -> a < a'
   | _ -> failwith "[Predicate.cst_smaller] incomparable constants"
 
-let cst_smaller_eq c c' =
+let _cst_smaller_eq c c' =
   match c,c' with
   | Int a, Int a' -> a <= a'
   | Str a, Str a' -> a <= a'
@@ -227,7 +224,7 @@ let print_cst qm c = print_string (string_of_cst qm c)
 
 
 
-let rec string_of_term term =
+let string_of_term term =
   let add_paren str = "(" ^ str ^ ")" in
   let rec t2s b term =
     let b', str = match term with
@@ -255,7 +252,7 @@ let print_term t = print_string (string_of_term t)
 let string_of_predicate (p,ar,args) =
   string_of_var p ^ Misc.string_of_list string_of_term args
 
-let print_predicate (p,ar,args) =
+let print_predicate (p,_ar,args) =
   print_var p;
   Misc.print_list print_term args
 

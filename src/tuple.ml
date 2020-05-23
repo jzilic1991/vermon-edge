@@ -38,8 +38,6 @@
  *)
 
 
-
-open Misc
 open Predicate
 open MFOTL
 
@@ -86,7 +84,7 @@ let get_at_pos = List.nth
 let add_first tuple v = v :: tuple
 let add_last tuple v = tuple @ [v]
 
-let duplicate_pos pos tuple =
+let _duplicate_pos pos tuple =
   let v = get_at_pos tuple pos in
   add_last tuple v
 
@@ -166,15 +164,6 @@ let satisfiesp arg_list tuple =
   satisf [] [] tuple arg_list []
 
 
-let satisfiesf1 f pos tuple =
-  f (get_at_pos tuple pos)
-
-
-let satisfiesf2 f pos1 pos2 tuple =
-  f (get_at_pos tuple pos1) (get_at_pos tuple pos2)
-
-
-
 let eval_term_on_tuple tuple =
   Predicate.eval_eterm (get_at_pos tuple)
 
@@ -215,12 +204,12 @@ let get_filter attr formula =
       | _ -> failwith "[Tuple.get_filter, cond] comparison between incompatible types"
     end;
     let f = match formula with
-      | Equal (t1, t2) -> (=)
-      | Less (t1, t2) -> (<)
-      | LessEq (t1, t2) -> (<=)
-      | Neg (Equal (t1, t2)) -> (<>)
-      | Neg (Less (t1, t2)) -> (>=)
-      | Neg (LessEq (t1, t2)) -> (>)
+      | Equal _ -> (=)
+      | Less _ -> (<)
+      | LessEq _ -> (<=)
+      | Neg (Equal _) -> (<>)
+      | Neg (Less _) -> (>=)
+      | Neg (LessEq _) -> (>)
       | _ -> failwith "[Tuple.get_filter, cond] internal error"
     in f x1 x2
   in

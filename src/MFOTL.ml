@@ -96,7 +96,7 @@ let ts_null = 0.
 let ts_max = max_float
 
 
-let ts_of_string2 err_place str =
+let _ts_of_string2 err_place str =
   try
     int_of_string str
   with Failure _ ->
@@ -145,55 +145,37 @@ let in_interval v intv =
 
 
 let direct_subformulas = function
-  | Equal (t1,t2) -> []
-  | Less (t1,t2) -> []
-  | LessEq (t1,t2) -> []
-  | Pred p -> []
+  | Equal _
+  | Less _
+  | LessEq _
+  | Pred _ -> []
   | Neg f -> [f]
   | And (f1,f2) -> [f1;f2]
   | Or (f1,f2) -> [f1;f2]
   | Implies (f1,f2) -> [f1;f2]
   | Equiv (f1,f2) -> [f1;f2]
-  | Exists (v,f) -> [f]
-  | ForAll (v,f) -> [f]
+  | Exists (_v,f) -> [f]
+  | ForAll (_v,f) -> [f]
   | Aggreg (_,_,_,_,f) -> [f]
-  | Prev (intv,f) -> [f]
-  | Next (intv,f) -> [f]
-  | Eventually (intv,f) -> [f]
-  | Once (intv,f) -> [f]
-  | Always (intv,f) -> [f]
-  | PastAlways (intv,f) -> [f]
-  | Since (intv,f1,f2) -> [f1;f2]
-  | Until (intv,f1,f2) -> [f1;f2]
-
-
-(** returns the list of all subformulas of [f], including [f] *)
-let rec subformulas f =
-   f::(List.concat (List.map subformulas (direct_subformulas f)))
-
-(** returns the list of all temporal subformulas of [f] *)
-let rec temporal_subformulas f =
-  match f with
-  | Prev (intv,f') -> f::(temporal_subformulas f')
-  | Next (intv,f') -> f::(temporal_subformulas f')
-  | Eventually (intv,f') -> f::(temporal_subformulas f')
-  | Once (intv,f') -> f::(temporal_subformulas f')
-  | Always (intv,f') -> f::(temporal_subformulas f')
-  | PastAlways (intv,f') -> f::(temporal_subformulas f')
-  | Since (intv,f1,f2) -> f::((temporal_subformulas f1) @ (temporal_subformulas f2))
-  | Until (intv,f1,f2) -> f::((temporal_subformulas f1) @ (temporal_subformulas f2))
-  | _ -> List.concat (List.map temporal_subformulas (direct_subformulas f))
+  | Prev (_intv,f) -> [f]
+  | Next (_intv,f) -> [f]
+  | Eventually (_intv,f) -> [f]
+  | Once (_intv,f) -> [f]
+  | Always (_intv,f) -> [f]
+  | PastAlways (_intv,f) -> [f]
+  | Since (_intv,f1,f2) -> [f1;f2]
+  | Until (_intv,f1,f2) -> [f1;f2]
 
 
 let is_temporal = function
-  | Prev (intv,f) -> true
-  | Next (intv,f) -> true
-  | Since (intv,f1,f2) -> true
-  | Until (intv,f1,f2) -> true
-  | Eventually (intv,f) -> true
-  | Once (intv,f) -> true
-  | Always (intv,f) -> true
-  | PastAlways (intv,f) -> true
+  | Prev _
+  | Next _
+  | Since _
+  | Until _
+  | Eventually _
+  | Once _
+  | Always _
+  | PastAlways _
   | _ -> false
 
 
@@ -210,15 +192,15 @@ let rec free_vars = function
   | Equiv (f1,f2) -> Misc.union (free_vars f1) (free_vars f2)
   | Exists (vl,f) -> List.filter (fun x -> not (List.mem x vl)) (free_vars f)
   | ForAll (vl,f) -> List.filter (fun x -> not (List.mem x vl)) (free_vars f)
-  | Aggreg (y,op,x,glist,f) -> y :: glist
-  | Prev (intv,f) -> free_vars f
-  | Next (intv,f) -> free_vars f
-  | Eventually (intv,f) -> free_vars f
-  | Once (intv,f) -> free_vars f
-  | Always (intv,f) -> free_vars f
-  | PastAlways (intv,f) -> free_vars f
-  | Since (intv,f1,f2) -> Misc.union (free_vars f2) (free_vars f1)
-  | Until (intv,f1,f2) -> Misc.union (free_vars f2) (free_vars f1)
+  | Aggreg (y,_op,_x,glist,_f) -> y :: glist
+  | Prev (_intv,f) -> free_vars f
+  | Next (_intv,f) -> free_vars f
+  | Eventually (_intv,f) -> free_vars f
+  | Once (_intv,f) -> free_vars f
+  | Always (_intv,f) -> free_vars f
+  | PastAlways (_intv,f) -> free_vars f
+  | Since (_intv,f1,f2) -> Misc.union (free_vars f2) (free_vars f1)
+  | Until (_intv,f1,f2) -> Misc.union (free_vars f2) (free_vars f1)
 
 
 let string_of_ts ts =

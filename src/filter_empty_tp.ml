@@ -202,7 +202,7 @@ let print_formula str f =
   print_string str;
   print_f_rec true false f
 
-let printnl_formula str f =
+let _printnl_formula str f =
   print_formula str f;
   print_newline()
 (* --- end of debugging code ------------------------------------------ *)
@@ -216,7 +216,7 @@ let add_labels (lf : lformula) : label list =
    | LLessEq (_,_) -> ()
    | LPred _ ->
      labels := add_label LFalse !labels
-   | LNeg (f1, l1) -> begin
+   | LNeg (_f1, l1) -> begin
        if (has_label LTrue l1) then
          labels := add_label LFalse !labels
        else ();
@@ -224,7 +224,7 @@ let add_labels (lf : lformula) : label list =
          labels := add_label LTrue !labels
        else ()
      end
-   | LAnd ((f1, l1), (f2, l2)) -> begin
+   | LAnd ((_f1, l1), (_f2, l2)) -> begin
        if (has_label LTrue l1) && (has_label LTrue l2) then
          labels := add_label LTrue !labels
        else ();
@@ -232,7 +232,7 @@ let add_labels (lf : lformula) : label list =
          labels := add_label LFalse !labels
        else ()
      end
-   | LOr ((f1, l1), (f2, l2)) -> begin
+   | LOr ((_f1, l1), (_f2, l2)) -> begin
        if (has_label LTrue l1) || (has_label LTrue l2) then
          labels := add_label LTrue !labels
        else ();
@@ -240,14 +240,14 @@ let add_labels (lf : lformula) : label list =
          labels := add_label LFalse !labels
        else ()
      end
-   | LExists (v, (f1, l1))
-   | LForAll (v, (f1, l1)) -> labels := l1
-   | LEventually (intv, (f1, l1))
-   | LOnce (intv, (f1, l1))
-   | LAlways (intv, (f1, l1))
-   | LPastAlways (intv, (f1, l1)) -> ()
-   | LSince (intv, (f1, l1), (f2, l2))
-   | LUntil (intv, (f1, l1), (f2, l2)) -> ()
+   | LExists (_v, (_f1, l1))
+   | LForAll (_v, (_f1, l1)) -> labels := l1
+   | LEventually _
+   | LOnce _
+   | LAlways _
+   | LPastAlways _
+   | LSince _
+   | LUntil _ -> ()
    | _ -> ());
   (* single operator rules: LEvRel *)
   (match lf with
@@ -256,33 +256,33 @@ let add_labels (lf : lformula) : label list =
    | LLessEq (_,_)
    | LPred _ ->
      labels := add_label LEvRel !labels
-   | LNeg (f1, l1)
-   | LExists (_, (f1, l1))
-   | LForAll (_, (f1, l1)) -> begin
+   | LNeg (_f1, l1)
+   | LExists (_, (_f1, l1))
+   | LForAll (_, (_f1, l1)) -> begin
        if (has_label LEvRel l1) then
          labels := add_label LEvRel !labels
        else ()
      end
-   | LAnd ((f1, l1), (f2, l2))
-   | LOr ((f1, l1), (f2, l2)) -> begin
+   | LAnd ((_f1, l1), (_f2, l2))
+   | LOr ((_f1, l1), (_f2, l2)) -> begin
        if (has_label LEvRel l1) && (has_label LEvRel l2) then
          labels := add_label LEvRel !labels
        else ()
      end
-   | LEventually (intv, (f1, l1))
-   | LOnce (intv, (f1, l1)) -> begin
+   | LEventually (_intv, (_f1, l1))
+   | LOnce (_intv, (_f1, l1)) -> begin
        if (has_label LEvRel l1) && (has_label LFalse l1) then
          labels := add_label LEvRel !labels
        else ()
      end
-   | LAlways (intv, (f1, l1))
-   | LPastAlways (intv, (f1, l1)) -> begin
+   | LAlways (_intv, (_f1, l1))
+   | LPastAlways (_intv, (_f1, l1)) -> begin
        if (has_label LEvRel l1) && (has_label LTrue l1) then
          labels := add_label LEvRel !labels
        else ()
      end
-   | LSince (intv, (f1, l1), (f2, l2))
-   | LUntil (intv, (f1, l1), (f2, l2)) -> begin
+   | LSince (_intv, (_f1, l1), (_f2, l2))
+   | LUntil (_intv, (_f1, l1), (_f2, l2)) -> begin
        if (has_label LEvRel l1) && (has_label LEvRel l2) &&
           (has_label LTrue l1) && (has_label LFalse l2) then
          labels := add_label LEvRel !labels
@@ -291,15 +291,15 @@ let add_labels (lf : lformula) : label list =
    | _ -> ());
   (* multiple operator rules: LEvRel *)
   (match lf with
-   | LEventually (intv1, ((LOnce (intv2, (f1, l1))), _))
-   | LOnce (intv1, ((LEventually (intv2, (f1, l1))), _)) ->
+   | LEventually (intv1, ((LOnce (intv2, (_f1, l1))), _))
+   | LOnce (intv1, ((LEventually (intv2, (_f1, l1))), _)) ->
      if (intv_contains_zero intv1) && (intv_contains_zero intv2) &&
         (has_label LFalse l1) && (has_label LEvRel l1)
      then
        labels := add_label LEvRel !labels
      else ()
-   | LAlways (intv1, ((LPastAlways (intv2, (f1, l1))), _))
-   | LPastAlways (intv1, ((LAlways (intv2, (f1, l1))), _)) ->
+   | LAlways (intv1, ((LPastAlways (intv2, (_f1, l1))), _))
+   | LPastAlways (intv1, ((LAlways (intv2, (_f1, l1))), _)) ->
      if (intv_contains_zero intv1) && (intv_contains_zero intv2) &&
         (has_label LTrue l1) && (has_label LEvRel l1)
      then
@@ -340,17 +340,17 @@ let rec go_down (f : MFOTL.formula) : lformula labeled =
     | PastAlways (intv,f) -> LPastAlways (intv, (go_down f))
     | Since (i,f1,f2) -> LSince (i, (go_down f1), (go_down f2))
     | Until (i,f1,f2) -> LUntil (i, (go_down f1), (go_down f2))
-    | Implies (f1,f2) -> failwith "[Filter_empty_tp.go_down] formula contains Implies"
+    | Implies _ -> failwith "[Filter_empty_tp.go_down] formula contains Implies"
     (* (\* rewrite p => q to ~p or q *\) *)
     (* LOr ((go_down (Neg f1)), (go_down f2)) *)
-    | Equiv (f1,f2) -> failwith "[Filter_empty_tp.go_down] formula contains Equiv"
+    | Equiv _ -> failwith "[Filter_empty_tp.go_down] formula contains Equiv"
   in
   let l = add_labels lf
   in
   (lf, l)
 
 let is_filterable_empty_tp f =
-  let (lf, l) = go_down f in
+  let (_lf, l) = go_down f in
   (* --- debugging code ---*)
   if Misc.debugging Misc.Dbg_filter then begin
     Printf.printf "Filter_empty_tp labels: ";
@@ -374,7 +374,7 @@ let enable f =
       Printf.eprintf "[Filter_empty_tp.enable] Disabled\n"
 
 let fc_check_filterable_empty_tp f =
-  let (lf, l) = go_down f in
+  let (_lf, l) = go_down f in
   Printf.printf "Filter_empty_tp labels: ";
   print_labels l;
   Printf.printf "\n";
@@ -384,4 +384,3 @@ let fc_check_filterable_empty_tp f =
     (* LEvRel - formula is not affected by addition/removal of empty tp *)
     Printf.printf "(filterable_empty_tp)";
   Printf.printf "\n\n";
-

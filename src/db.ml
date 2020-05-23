@@ -38,8 +38,6 @@
  *)
 
 
-
-open Predicate
 open MFOTL
 open Table
 
@@ -52,16 +50,11 @@ type db = table list
 type log = (timestamp * db) list
 
 
-
-let make_schema s = s
-
-
 let get_table db p =
   List.find (fun t ->
       let (name,_) = Table.get_schema t in
       (Predicate.get_name p) = name
     ) db
-
 
 let make_db db = db
 

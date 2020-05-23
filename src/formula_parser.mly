@@ -64,12 +64,12 @@
     in
     float_of_int (d * n)
 
-  let rec exists varlist f =
+  let exists varlist f =
     match varlist with
     | [] -> failwith "[Formula_parser.exists] no variables"
     | vl -> Exists (vl, f)
 
-  let rec forall varlist f =
+  let forall varlist f =
     match varlist with
     | [] -> failwith "[Formula_parser.forall] no variables"
     | vl -> ForAll (vl, f)
@@ -84,7 +84,7 @@
     else
       str
 
-  let get_cst str =
+  let _get_cst str =
     try
       Int (int_of_string str)
     with _ -> Str (strip str)

@@ -44,8 +44,6 @@
   open Predicate
   open MFOTL
   open Tuple
-  open Db
-  open Filter_rel
 
   let f str =
     if Misc.debugging Dbg_log then

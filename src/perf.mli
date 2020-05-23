@@ -40,8 +40,6 @@
 (** This module contains helper function for performance
     evaluation. *)
 
-open MFOTL
-
 val show_results: int -> MFOTL.timestamp -> unit
 val check_log: int -> MFOTL.timestamp -> unit
 val check_log_end: int -> MFOTL.timestamp -> unit

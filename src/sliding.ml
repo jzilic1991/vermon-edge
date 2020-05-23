@@ -37,7 +37,6 @@
 
 
 open Misc
-open MFOTL
 
 (* This module should be a functor: 'a should be an OrderedType *)
 
@@ -84,7 +83,8 @@ let print_stree f g str t =
   in
   print " " t
 
-let print_stree_int str t = print_stree string_of_int str t
+let _print_stree_int str t =
+  print_stree string_of_int str t
 
 let print_list f str seq =
   print_string str;
@@ -97,7 +97,7 @@ let print_list f str seq =
   print seq;
   print_string "]\n"
 
-let print_list_int = print_list print_int
+let _print_list_int = print_list print_int
 
 
 
@@ -109,7 +109,7 @@ let discharge_res t =
   | LNode a -> LNode {l = a.l; r = a.r; res = None}
   | INode (a, tl, tr) -> INode ({l = a.l; r = a.r; res = None}, tl, tr)
 
-let build_bin_tree op tl tr (lw, rw) =
+let _build_bin_tree op tl tr (lw, rw) =
   let ltl, rtl = stree_bounds tl in
   let ltr, rtr = stree_bounds tr in
   assert (ltl = lw);
@@ -129,12 +129,6 @@ let combine op tl tr =
 (* returns a list of trees, the head being on the left *)
 let rec reusable_subtrees (lw, rw) t =
   let lt, rt = stree_bounds t in
-  (* if Misc.debugging Dbg_eval then *)
-  (*   Printf.printf "[reusable_subtrees] tree: (%s,%s)  window: (%s, %s)\n" *)
-  (*     (MFOTL.string_of_ts lt) *)
-  (*     (MFOTL.string_of_ts rt) *)
-  (*     (MFOTL.string_of_ts lw) *)
-  (*     (MFOTL.string_of_ts rw); *)
   assert (lt <= lw);
   assert (rt = rw);
   if lt = lw then (* we already have the tree *)
@@ -144,7 +138,6 @@ let rec reusable_subtrees (lw, rw) t =
     | LNode _ -> failwith "[reusable_subtrees] impossible"
     | INode (_, tl, tr) ->
       let ltr, rtr = stree_bounds tr in
-      (* Printf.printf "[reusable_subtrees] right tree: (%d,%d)\n" ltr rtr; *)
       assert (rtr = rw);
       if ltr <= lw then (* same situation as when this function was called: retry *)
         reusable_subtrees (lw, rw) tr
@@ -207,8 +200,3 @@ let slide f op seq (lw, rw) t =
       build_rl_tree op (tr :: t_list)
     else (* rt = rw *)
       build_rl_tree op t_list
-
-
-
-
-

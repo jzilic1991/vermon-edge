@@ -37,9 +37,6 @@
 
 (** This module implements the sliding window algorithm. *)
 
-
-open MFOTL
-
 type 'a tree =
   | LNode of 'a
   | INode of ('a * ('a tree) * ('a tree))

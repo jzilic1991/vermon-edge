@@ -42,7 +42,6 @@
 open Misc
 open Predicate
 open MFOTL
-open Db
 
 
 let elim_double_negation f =
@@ -118,7 +117,7 @@ let simplify_terms f =
 (* This function eliminates the following syntactic sugar: Implies,
    Equiv, ForAll and rewrites the Always and PastAlways operators in
    terms of the Eventually and Once operators *)
-let rec elim_syntactic_sugar g =
+let elim_syntactic_sugar g =
   let rec elim f =
     match f with
     | Equal _ | Less _ | LessEq _ | Pred _ -> f
@@ -173,8 +172,8 @@ let push_negation g =
       (Eventually (intv, push (Neg f)))
     | Neg (PastAlways (intv, f)) ->
       (Once (intv, push (Neg f)))
-    | Neg (Implies (f1, f2) as f) -> push (Neg (push f))
-    | Neg (Equiv (f1, f2) as f) -> push (Neg (push f))
+    | Neg (Implies _) -> push (Neg (push f))
+    | Neg (Equiv _) -> push (Neg (push f))
 
     | Neg f -> Neg (push f)
     | Equal _ | Less _ | LessEq _ | Pred _ -> f
@@ -351,8 +350,8 @@ let rec is_monitorable f =
   | Once (_, f1)
     -> is_monitorable f1
 
-  | Since (intv, f1, f2)
-  | Until (intv, f1, f2) ->
+  | Since (_intv, f1, f2)
+  | Until (_intv, f1, f2) ->
     let is_mon2, msg2 = is_monitorable f2 in
     if not is_mon2
     then (is_mon2, msg2)
@@ -399,17 +398,17 @@ let rec rr = function
 
   | Equal (t1, t2) ->
     (match t1, t2 with
-     | Var x, Cst c -> ([x], true)
-     | Cst c, Var x -> ([x], true)
+     | Var x, Cst _ -> ([x], true)
+     | Cst _, Var x -> ([x], true)
      | _ -> ([], true) )
   | Less (t1, t2) ->
     (match t1, t2 with
      | Var x, Var y when x=y -> ([x], true)
-     | Var x, Cst c -> ([x], true)
+     | Var x, Cst _ -> ([x], true)
      | _ -> ([], true))
   | LessEq (t1, t2) ->
     (match t1, t2 with
-     | Var x, Cst c -> ([x], true)
+     | Var x, Cst _ -> ([x], true)
      | _ -> ([], true))
 
   | Neg (Equal (t1, t2)) ->
@@ -418,12 +417,12 @@ let rec rr = function
      | _ -> ([], true))
   | Neg (Less (t1, t2)) ->
     (match t1, t2 with
-     | Cst c, Var x -> ([x], true)
+     | Cst _, Var x -> ([x], true)
      | _ -> ([], true))
   | Neg (LessEq (t1, t2)) ->
     (match t1, t2 with
      | Var x, Var y when x=y -> ([x], true)
-     | Cst c, Var x -> ([x], true)
+     | Cst _, Var x -> ([x], true)
      | _ -> ([], true))
 
   | Neg f ->
@@ -492,18 +491,18 @@ let rec rr = function
   (* else *)
   (*   (rrf, false) *)
 
-  | Aggreg (y, op, x, glist, f) ->
+  | Aggreg (y, _op, _x, glist, f) ->
     let rrf, b = rr f in
     let frr = List.filter (fun z -> List.mem z glist) rrf in
     y :: frr, b
 
-  | Prev (intv, f) -> rr f
-  | Next (intv, f) -> rr f
-  | Eventually (intv, f) -> rr f
-  | Once (intv, f) -> rr f
+  | Prev (_intv, f)
+  | Next (_intv, f)
+  | Eventually (_intv, f)
+  | Once (_intv, f) -> rr f
 
-  | Since (intv, f1, f2)
-  | Until (intv, f1, f2) ->
+  | Since (_intv, f1, f2)
+  | Until (_intv, f1, f2) ->
     let _, b1 = rr f1 in
     let rr2, b2 = rr f2 in
     (rr2, b1 && b2)
@@ -545,7 +544,7 @@ let mk_new_var () =
   x
 
 (* we replace every non-atomic terms by a fresh variable *)
-let rewrite_pred p =
+let _rewrite_pred p =
   let name, _, term_list = Predicate.get_info p in
   let rec iter replacements nlist tlist =
     match tlist with
@@ -571,8 +570,8 @@ let rewrite_pred p =
 
 
 let propagate_cond f1 f2 =
-  let rr1, b1 = rr f1 in
-  let rr2, b2 = rr f2 in
+  let rr1, _b1 = rr f1 in
+  let rr2, _b2 = rr f2 in
   let fv2 = MFOTL.free_vars f2 in
   Misc.inter rr1 (Misc.diff fv2 rr2) <> []
 
@@ -1107,7 +1106,6 @@ let rec type_check_formula (sch, vars) f =
       | Sum -> type_check_aggregation exp_num_typ exp_num_typ
       | Avg | Med -> type_check_aggregation (TCst TFloat) exp_num_typ) in
  type_check_formula (sch, vars)
-
 
 
 let rec check_syntax db_schema f =

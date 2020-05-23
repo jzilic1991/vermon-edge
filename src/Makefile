@@ -67,7 +67,7 @@ monpoly.js: monpoly.byte
 
 # update version with the latest revision number
 version.ml: FORCE
-	@echo "let ver = \"1.1.9 (`git log -1 --format=\"%H\"`)\"" > version.ml
+	@echo "let version = \"1.1.9 (`git log -1 --format=\"%H\"`)\"" > version.ml
 FORCE:
 
 
@@ -80,7 +80,7 @@ doc: $(OURMLI:.mli=.cmi)
 clean:
 	rm -f .depend.init .depend
 	rm -f *.cm[aiox] *.cmxa $(OBJ:.$(O)=.o) main.o version.o
-	rm -f *parser.mli *parser.ml *lexer.ml version.ml
+	rm -f *parser.mli *parser.ml *lexer.ml
 	rm -f *~
 
 

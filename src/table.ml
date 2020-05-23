@@ -48,16 +48,11 @@ type schema = var * (string * tcst) list
 type table = schema * relation
 
 
-let get_schema (s,rel) = s
+let get_schema (s,_rel) = s
 
-let get_relation (s,rel) = rel
-
-let make_schema n a = (n,a)
+let get_relation (_s,rel) = rel
 
 let make_table s r = (s,r)
-
-let empty_table s =
-  (s,Relation.empty)
 
 
 let get_matches attr1 attr2 =
@@ -95,8 +90,3 @@ let dump_table (s,rel) =
   print_string name;
   Relation.print_rel4 " " rel;
   print_newline()
-
-
-
-
-

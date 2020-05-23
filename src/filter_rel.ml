@@ -54,9 +54,9 @@ let rec print_preds = function
 
 let get_predicates f =
   let rec get_preds preds = function
-    | Equal (t1,t2)
-    | Less (t1,t2)
-    | LessEq (t1,t2) -> preds
+    | Equal _
+    | Less _
+    | LessEq _ -> preds
     | Pred p ->  p :: preds
     | Neg f
     | Exists (_,f)
@@ -118,9 +118,9 @@ let get_tuple_filter f =
       | _ -> failwith "[Filter_rel.tuples_from_args] internal error"
   in
   let rec get_tuples tuples = function (* formula *)
-    | Equal (t1,t2)
-    | Less (t1,t2)
-    | LessEq (t1,t2) -> tuples
+    | Equal _
+    | Less _
+    | LessEq _ -> tuples
     | Pred p ->  (tuples_from_args (get_name p) 0 (get_args p)) @ tuples
     | Neg f
     | Exists (_,f)
@@ -148,7 +148,7 @@ let get_tuple_filter f =
       List.filter
         (fun (p,i,a) -> match a with
            | Is_var -> false
-           | Is_cst(c) -> not (List.mem (p,i,Is_var) filter_stage1)
+           | Is_cst _ -> not (List.mem (p,i,Is_var) filter_stage1)
         ) l
     in
     let rec convert_type = function
@@ -162,7 +162,7 @@ let get_tuple_filter f =
   filter_is_var (get_tuples [] f)
 
 let is_cst_from_csts csts =
-  remove_duplicates (List.map (fun (p,i,c) -> (p,i)) csts)
+  remove_duplicates (List.map (fun (p,i,_c) -> (p,i)) csts)
 
 let rec print_csts = function
   | [] -> ()
@@ -216,17 +216,6 @@ let tuple_OK pred tuple =
   in
   process_is_cst pred (Tuple.get_constants tuple) !tuple_filter_is_cst !tuple_filter_csts
 
-let debug_tuple_csts_OK pred tuple =
-  let res = tuple_OK pred tuple in
-  Printf.printf "filter: pred %s tuple" pred;
-  Tuple.print_tuple tuple;
-  Printf.printf " ->";
-  if res
-  then Printf.printf "true"
-  else Printf.printf "false"
-  ;
-  Printf.printf "\n";
-  res
 
 (* ------------------- *)
 (* --- all filters --- *)
