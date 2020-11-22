@@ -1,5 +1,22 @@
 Version 1.1.10
 --------------
+- Formulas with empty or negative intervals are no longer accepted.
+- Formulas are now type-checked.
+- The default values for empty aggregations without grouping have
+  changed. They now depend on the type of the aggregated variable:
+
+    Input:    int           float           string
+    Agg.:
+      avg     float / 0.    float / 0.      (not supported)
+      sum     int   / 0     float / 0.      (not supported)
+      cnt     int   / 0     int   / 0       int    / 0
+      min     int   / 0     float / inf     string / ""
+      max     int   / 0     float / -inf    string / ""
+      med     float / 0.    float / 0       (not supported)
+    
+    Each cell in the table shows the type of the result value / the
+    default value.
+
 - Bug fixes:
 
   * Fixed a bug related to a corner case in the evaluation of "NOT alpha
@@ -8,6 +25,17 @@ Version 1.1.10
   * Fixed the evaluation of subformulas of the form "NOT alpha UNTIL
     beta" which assumed that "NOT alpha" should also hold at the
     evaluation point when "beta" holds at the evaluation point.
+
+  * For subformulas of the form "alpha OR beta", the attributes of the
+    relation computed for beta had the wrong order.
+
+  * Fixed the evaluation of "MIN/MAX ... ONCE" aggregations.
+
+  * In median aggregations over integers, the result was not always
+    a float, depending on the number of aggregated values.
+
+  * It is now possible to count strings, which used to trigger an
+    exception.
 
 Version 1.1.9
 -------------
