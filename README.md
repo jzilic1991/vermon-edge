@@ -16,7 +16,7 @@ details on the project please visit
 Requirements
 ------------
 
-MonPoly has been tested with version 4.11.1 of [OCaml]((https://ocaml.org))
+MonPoly has been tested with version 4.11.1 of [OCaml](https://ocaml.org)
 under Linux. It should also compile and work with most not-too-old versions of
 OCaml under other operating systems.
 
