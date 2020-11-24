@@ -51,7 +51,7 @@ v <- AVG y; x p(x,y)
 @20. (time point 1): (1.5,a) (3,b)
 -----
 v <- MED y; x p(x,y)
-@20. (time point 1): (1,a) (3,b)
+@20. (time point 1): (1.5,a) (3,b)
 -----
 v <- MIN y; x p(x,y)
 @20. (time point 1): (1,a) (3,b)
@@ -106,8 +106,8 @@ v <- AVG y; x ONCE p(x,y)
 @30. (time point 2): (1.5,a) (3,b)
 -----
 v <- MED y; x ONCE p(x,y)
-@20. (time point 1): (1,a) (3,b)
-@30. (time point 2): (1,a) (3,b)
+@20. (time point 1): (1.5,a) (3,b)
+@30. (time point 2): (1.5,a) (3,b)
 -----
 v <- MIN y; x ONCE p(x,y)
 @20. (time point 1): (1,a) (3,b)

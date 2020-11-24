@@ -1,11 +1,18 @@
-mon=monpoly
+#!/bin/bash
+
+if [ -n "$1" ]; then
+    mon=$1
+else
+    mon=monpoly
+fi
+
 log=test_agg_empty_rel.log
 sig=test_agg_empty_rel.sig
 out=test_agg_empty_rel.out
 res=test_agg_empty_rel.res
 
 if [ -e $out ]; then
-    mv $out $out.bak
+    rm $out
 fi
 
 touch $out
@@ -30,3 +37,7 @@ while read f ; do
 done < test_agg_empty_rel.mfotl
 
 diff -q $res $out
+if [ $? -eq 0 ]; then
+    echo "Same results."
+    rm $out
+fi
