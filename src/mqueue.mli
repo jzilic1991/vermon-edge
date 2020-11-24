@@ -61,7 +61,7 @@ type 'a t
 
 
 exception Empty
-(** Raised when {!Queue.take} or {!Queue.peek} is applied to an empty queue. *)
+(** Raised when [take] or [peek] is applied to an empty queue. *)
 
 
 val create : unit -> 'a t

@@ -73,6 +73,7 @@ FORCE:
 
 # Documentation
 doc: $(OURMLI:.mli=.cmi)
+	mkdir -p ../doc
 	ocamldoc -html -d ../doc $(OURMLI)
 
 

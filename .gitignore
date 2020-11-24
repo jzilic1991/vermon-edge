@@ -1,4 +1,4 @@
-monpoly
+/monpoly
 src/monpoly
 
 src/formula_lexer.ml
@@ -11,6 +11,8 @@ src/version.ml
 
 src/.depend
 src/.depend.init
+
+/doc/
 
 *~
 \#*\#
