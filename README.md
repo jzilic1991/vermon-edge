@@ -10,16 +10,15 @@ An overview of the tool, including its usage and history, can be found in this
 
 The tool is developed as part of an academic project at ETH Zurich. For more
 details on the project please visit
-[this link](http://www.infsec.ethz.ch/research/projects/mon_enf).
+[this link](https://www.infsec.ethz.ch/research/projects/mon_enf).
 
 
 Requirements
 ------------
 
-MonPoly has been tested with version 3.12.1 of
-[OCaml]((http://caml.inria.fr/ocaml/index.en.html)) under Linux. It should also
-compile and work with most not-too-old versions of OCaml under other operating
-systems.
+MonPoly has been tested with version 4.11.1 of [OCaml]((https://ocaml.org))
+under Linux. It should also compile and work with most not-too-old versions of
+OCaml under other operating systems.
 
 The following additional OCaml tools are used:
 ```
@@ -34,11 +33,11 @@ installed with the command
 ```
   apt-get install ocaml
 ```
-For installing OCaml on other systems, see the [OCaml website]
-(http://caml.inria.fr/).  There you also find links to binary OCaml
-distributions for other Linux distributions (Fedora, Red Hat, and
-Gentoo), Microsoft Windows, and MacOS X.  For Microsoft Windows you
-may need to install the [Cygwin environment](http://www.cygwin.com/).
+For installing OCaml on other systems, see the [OCaml
+website](https://ocaml.org).  There you also find links to binary OCaml
+distributions for other Linux distributions (Fedora, Red Hat, and Gentoo),
+Microsoft Windows, and MacOS X.  For Microsoft Windows you may need to install
+the [Cygwin environment](http://www.cygwin.com/).
 
 
 Compiling
