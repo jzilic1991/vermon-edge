@@ -29,7 +29,7 @@ Version 1.1.10
   * For subformulas of the form "alpha OR beta", the attributes of the
     relation computed for beta had the wrong order.
 
-  * Fixed the evaluation of "MIN/MAX ... ONCE" aggregations.
+  * Fixed a bug in the evaluation of "MIN/MAX ... ONCE" aggregations.
 
   * In median aggregations over integers, the result was not always
     a float, depending on the number of aggregated values.

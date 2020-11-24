@@ -67,7 +67,7 @@ monpoly.js: monpoly.byte
 
 # update version with the latest revision number
 version.ml: FORCE
-	@echo "let version = \"1.1.9 (`git log -1 --format=\"%H\"`)\"" > version.ml
+	@echo "let version = \"1.1.10 (`git log -1 --format=\"%H\"`)\"" > version.ml
 FORCE:
 
 
