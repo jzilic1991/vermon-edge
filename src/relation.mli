@@ -119,33 +119,78 @@ val eval_not_equal: term -> term -> relation
     {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.Make.html}Set.Make} (with [elt=Tuple.tuple]): *)
 
 (* TODO: Think about restricting some of these? *)
-val empty : relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALempty}Set.S.empty} *)
-val is_empty : relation -> bool (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALis_empty}Set.S.is_empty} *)
-val mem : tuple -> relation -> bool (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALmem}Set.S.mem} *)
-val add : tuple -> relation -> relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALadd}Set.S.add} *)
-val singleton : tuple -> relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALsingleton}Set.S.singleton} *)
-val remove : tuple -> relation -> relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALremove}Set.S.remove} *)
-val union : relation -> relation -> relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALunion}Set.S.union} *)
-val inter : relation -> relation -> relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALinter}Set.S.inter} *)
-val diff : relation -> relation -> relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALdiff}Set.S.diff} *)
-val compare : relation -> relation -> int (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALcompare}Set.S.compare} *)
-val equal : relation -> relation -> bool (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALequal}Set.S.equal} *)
-val subset : relation -> relation -> bool (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALsubset}Set.S.subset} *)
-val iter : (tuple -> unit) -> relation -> unit (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALiter}Set.S.iter} *)
-val fold : (tuple -> 'a -> 'a) -> relation -> 'a -> 'a (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALfold}Set.S.fold} *)
-val for_all : (tuple -> bool) -> relation -> bool (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALfor_all}Set.S.for_all} *)
-val exists : (tuple -> bool) -> relation -> bool (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALexists}Set.S.exists} *)
-val filter : (tuple -> bool) -> relation -> relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALfilter}Set.S.filter} *)
-val partition : (tuple -> bool) -> relation -> relation * relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALpartition}Set.S.partition} *)
-val cardinal : relation -> int (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALcardinal}Set.S.cardinal} *)
-val elements : relation -> tuple list (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALelements}Set.S.elements} *)
-val min_elt : relation -> tuple (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALmin_elt}Set.S.min_elt} *)
-val max_elt : relation -> tuple (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALmax_elt}Set.S.max_elt} *)
-val choose : relation -> tuple (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALchoose}Set.S.choose} *)
-val split : tuple -> relation -> relation * bool * relation (** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALsplit}Set.S.split} *)
 
+val empty : relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALempty}Set.S.empty} *)
 
+val is_empty : relation -> bool
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALis_empty}Set.S.is_empty} *)
 
+val mem : tuple -> relation -> bool
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALmem}Set.S.mem} *)
+
+val add : tuple -> relation -> relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALadd}Set.S.add} *)
+
+val singleton : tuple -> relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALsingleton}Set.S.singleton} *)
+
+val remove : tuple -> relation -> relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALremove}Set.S.remove} *)
+
+val union : relation -> relation -> relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALunion}Set.S.union} *)
+
+val inter : relation -> relation -> relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALinter}Set.S.inter} *)
+
+val diff : relation -> relation -> relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALdiff}Set.S.diff} *)
+
+val compare : relation -> relation -> int
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALcompare}Set.S.compare} *)
+
+val equal : relation -> relation -> bool
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALequal}Set.S.equal} *)
+
+val subset : relation -> relation -> bool
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALsubset}Set.S.subset} *)
+
+val iter : (tuple -> unit) -> relation -> unit
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALiter}Set.S.iter} *)
+
+val fold : (tuple -> 'a -> 'a) -> relation -> 'a -> 'a
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALfold}Set.S.fold} *)
+
+val for_all : (tuple -> bool) -> relation -> bool
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALfor_all}Set.S.for_all} *)
+
+val exists : (tuple -> bool) -> relation -> bool
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALexists}Set.S.exists} *)
+
+val filter : (tuple -> bool) -> relation -> relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALfilter}Set.S.filter} *)
+
+val partition : (tuple -> bool) -> relation -> relation * relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALpartition}Set.S.partition} *)
+
+val cardinal : relation -> int
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALcardinal}Set.S.cardinal} *)
+
+val elements : relation -> tuple list
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALelements}Set.S.elements} *)
+
+val min_elt : relation -> tuple
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALmin_elt}Set.S.min_elt} *)
+
+val max_elt : relation -> tuple
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALmax_elt}Set.S.max_elt} *)
+
+val choose : relation -> tuple
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALchoose}Set.S.choose} *)
+
+val split : tuple -> relation -> relation * bool * relation
+(** see {{:http://caml.inria.fr/pub/docs/manual-ocaml/libref/Set.S.html#VALsplit}Set.S.split} *)
 
 
 (** Pretty-printing functions: *)

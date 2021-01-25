@@ -1084,8 +1084,8 @@ let rec type_check_formula (sch, vars) f =
     let (shadowed_vars,reduced_vars) = List.partition (fun (vr,_) -> List.mem vr zs) vars in
     let new_vars = List.fold_left (fun vrs vr -> (vr,new_type_symbol TAny vrs)::vrs) reduced_vars zs in
     let type_check_aggregation exp_typ1 exp_typ2 =
-        let (s1,v1,t1) = type_check_term_debug d (sch,new_vars) exp_typ1 (Var r) in
-        let (s2,v2,t2) = type_check_term_debug d (s1,v1) exp_typ2 (Var x) in
+        let (s1,v1,_t1) = type_check_term_debug d (sch,new_vars) exp_typ1 (Var r) in
+        let (s2,v2,_t2) = type_check_term_debug d (s1,v1) exp_typ2 (Var x) in
         let (s3,v3) = type_check_formula (s2,v2) f in
         let shadowed_vars = 
           if (exp_typ1 = exp_typ2) && (List.mem_assoc r shadowed_vars)
@@ -1108,7 +1108,7 @@ let rec type_check_formula (sch, vars) f =
  type_check_formula (sch, vars)
 
 
-let rec check_syntax db_schema f =
+let check_syntax db_schema f =
   let lift_type t = TCst t in
   let sch = List.map (fun (t, l) -> (t, List.map (fun (_,t) -> lift_type t) l)) db_schema in 
   let debug = !first_debug && (Misc.debugging Dbg_formula) in 

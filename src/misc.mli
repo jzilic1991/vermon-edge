@@ -56,20 +56,25 @@ type dbg =
   | Dbg_perf
   | Dbg_filter
 
+(** Flags used when measuring performance: *)
+
 val usr2: bool ref
 val alrm: bool ref
-  (** Flags used when measuring performance *)
+
+(** Flags corresponding to the command-line options -verbose, -check,
+    -no_new_last_ts, -ignore_errors, -stop_at_out_of_order_ts: *)
 
 val verbose: bool ref
 val checkf: bool ref
 val new_last_ts: bool ref
 val ignore_parse_errors: bool ref
 val stop_at_out_of_order_ts: bool ref
-  (** Flags corresponding to the command-line options: -verbose, -check, -no_new_last_ts, -ignore_errors, -stop_at_out_of_order_ts. *)
+
+(** Flags corresponding to the command-line options -no_rw, and
+    -stop_at_last_viol: *)
+
 val no_rw: bool ref
 val stop_at_first_viol: bool ref
-(** Flags corresponding to the command-line options -verbose,
-    -check, -no_new_last_ts, -no_rw, and -stop_at_last_viol. *)
 
 
 val split_debug: string -> unit

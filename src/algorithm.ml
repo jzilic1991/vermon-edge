@@ -1498,7 +1498,7 @@ let rec eval f neval crt discard =
             end
           else
             begin
-              let j1,tsj1,rel1 = Dllist.get_data !crt1_j in
+              let j1,_tsj1,rel1 = Dllist.get_data !crt1_j in
               assert(j1 = j2);
               if MFOTL.in_left_ext (MFOTL.ts_minus tsj2 tsq) intv then
                 begin

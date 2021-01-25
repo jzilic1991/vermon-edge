@@ -417,7 +417,8 @@ let string_of_formula str g =
   str ^ (string_f_rec true false g)
 
   (* Fully parenthesize an MFOTL formula *)
-  let string_of_parenthesized_formula str g =
+  (* TODO: Seems unused? *)
+  (*let string_of_parenthesized_formula str g =
     let rec string_f_rec top par h =
       (match h with
         | Equal (t1,t2) ->
@@ -617,6 +618,7 @@ let string_of_formula str g =
       )
       in
     str ^ (string_f_rec true false g)
+*)
 
 let print_formula str f =
   print_string (string_of_formula str f)

@@ -249,7 +249,7 @@ let string_of_term term =
 
 let print_term t = print_string (string_of_term t)
 
-let string_of_predicate (p,ar,args) =
+let string_of_predicate (p,_ar,args) =
   string_of_var p ^ Misc.string_of_list string_of_term args
 
 let print_predicate (p,_ar,args) =
