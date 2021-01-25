@@ -1,0 +1,11 @@
+(executable
+  (name main)
+  (public_name monpoly)
+  (package monpoly)
+  (libraries str unix))
+
+(ocamllex formula_lexer log_lexer)
+(ocamlyacc formula_parser log_parser)
+
+(rule (with-stdout-to version.ml
+  (bash "echo \"let version = \\\"%{version:monpoly} ($(git describe --always --dirty))\\\"\"")))

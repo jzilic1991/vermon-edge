@@ -1,25 +1,8 @@
-/monpoly
-src/monpoly
-
-src/formula_lexer.ml
-src/formula_parser.ml
-src/formula_parser.mli
-src/log_lexer.ml
-src/log_parser.ml
-src/log_parser.mli
-src/version.ml
-
-src/.depend
-src/.depend.init
-
-/doc/
+_build
+/monpoly.install
 
 *~
 \#*\#
-
-*.o
-*.cmi
-*.cmx
 
 *.rej
 *.orig
