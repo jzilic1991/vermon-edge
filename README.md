@@ -50,7 +50,8 @@ To compile and install MonPoly, just do
 opam install .
 ```
 in the root directory of the project. Assuming that OPAM has been set up
-correctly, the `monpoly` command should then available to the installing user.
+correctly, the `monpoly` command should then be available to the installing
+user.
 
 To uninstall MonPoly, do
 ```
