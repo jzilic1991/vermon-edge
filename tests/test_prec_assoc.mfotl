@@ -1,7 +1,0 @@
-p(x) SINCE q(y) UNTIL[0,1] r(z)
-p(x) UNTIL[0,1] q(y) SINCE r(z)
-p(x) AND q(y) AND r(z)
-EXISTS x. p(x) IMPLIES q(x)
-EXISTS s. p(x) IMPLIES q(x) AND r(a) OR t(b) EQUIV c(x)
-EXISTS s. p(x) IMPLIES q(x) OR r(a) AND t(b) EQUIV c(x)
-EXISTS x.y. p(x) IMPLIES q(z)

@@ -1,9 +1,0 @@
-0 = 0 SINCE[0,10] p(x)
-0 = 0 SINCE[1,10] p(x)
-0 = 0 SINCE[0,2] p(x)
-0 = 0 SINCE[1,2] p(x)
-
-(NOT 0 = 1) SINCE[0,10] p(x)
-(NOT 0 = 1) SINCE[1,10] p(x)
-(NOT 0 = 1) SINCE[0,2] p(x)
-(NOT 0 = 1) SINCE[1,2] p(x)

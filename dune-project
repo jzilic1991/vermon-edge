@@ -3,6 +3,7 @@
 (version 1.1.10)
 
 (generate_opam_files true)
+(cram enable)
 
 (license "LGPL-2.1-only WITH OCaml-LGPL-linking-exception")
 (authors
