@@ -104,6 +104,35 @@ let rec tvars = function
     -> (tvars t1) @ (tvars t2)
 
 
+let fresh_var fv =
+  let rec search v =
+    let var = "_x" ^ (string_of_int v) in
+    if List.exists (fun x -> x = var) fv then search (v+1) else var
+  in
+  search 1
+
+let fresh_var_mapping fv vs =
+  let _, m = List.fold_left (fun (fv, m) old_v ->
+      let new_v = fresh_var fv
+      in (new_v :: fv, (old_v, new_v) :: m)
+    ) (fv, []) vs
+  in m
+
+let mk_subst m = List.map (fun (v, v') -> (v, Var v')) m
+
+let rec substitute_vars m = function
+  | Var v as t -> (try List.assoc v m with Not_found -> t)
+  | Cst _c as t -> t
+  | F2i t -> F2i (substitute_vars m t)
+  | I2f t -> I2f (substitute_vars m t)
+  | UMinus t -> UMinus (substitute_vars m t)
+  | Plus (t1, t2) -> Plus (substitute_vars m t1, substitute_vars m t2)
+  | Minus (t1, t2) -> Minus (substitute_vars m t1, substitute_vars m t2)
+  | Mult (t1, t2) -> Mult (substitute_vars m t1, substitute_vars m t2)
+  | Div (t1, t2) -> Div (substitute_vars m t1, substitute_vars m t2)
+  | Mod (t1, t2) -> Mod (substitute_vars m t1, substitute_vars m t2)
+
+
 let eval_eterm f t =
   let rec eval = function
     | Cst c -> c
@@ -178,6 +207,8 @@ let minus a b =
 let pvars (p:predicate) =
   let get_vars l = List.fold_left (fun vars t -> vars @ (tvars t)) [] l in
   Misc.remove_duplicates (get_vars (get_args p))
+
+
 
 
 let cst_smaller c c' =

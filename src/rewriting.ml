@@ -538,6 +538,8 @@ let is_tsfsaferange f =
 
 let counter = ref 0
 
+(* FIXME: Variables beginning with an underscore are allowed in the input
+   formula. This is therefore unsafe. Should use Predicate.fresh_var_mapping. *)
 let mk_new_var () =
   let x = "_x" ^ (string_of_int !counter) in
   incr counter;
@@ -598,7 +600,11 @@ let rec rewrite f =
 
   | And (f', Exists (v, f1)) ->
     if propagate_cond f' f1 then
-      And (f', Exists (v, rewrite (And (f', f1))))
+      let avoid = Misc.union (free_vars f') (free_vars f1) in
+      let m = Predicate.fresh_var_mapping avoid v in
+      let v' = List.map (fun x -> List.assoc x m) v in
+      let m' = Predicate.mk_subst m in
+      And (f', Exists (v', rewrite (And (f', substitute_vars m' f1))))
     else
       let f' = rewrite f' in
       let f1 = rewrite f1 in

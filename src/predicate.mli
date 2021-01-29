@@ -69,6 +69,10 @@ type 'a eterm =
 
 type term = var eterm
 
+val fresh_var_mapping: var list -> var list -> (var * var) list
+val mk_subst: (var * var) list -> (var * term) list
+val substitute_vars: ('a * 'a eterm) list -> 'a eterm -> 'a eterm
+
 val eval_eterm: ('a -> cst) -> 'a eterm -> cst
 val eval_term: (var * cst) list -> term -> cst
 val eval_gterm: term -> cst

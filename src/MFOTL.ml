@@ -203,6 +203,56 @@ let rec free_vars = function
   | Until (_intv,f1,f2) -> Misc.union (free_vars f2) (free_vars f1)
 
 
+let avoid_capture v fv m =
+  let m_range = List.flatten (List.map (fun (_,t) -> Predicate.tvars t) m) in
+  let capturing = List.filter (fun x -> List.mem x m_range) v in
+  let fresh = Predicate.fresh_var_mapping fv capturing in
+  let m' = List.filter (fun (x,_) -> not (List.mem x v)) m in
+  (fresh, m' @ Predicate.mk_subst fresh)
+
+let subst_vars m = List.map (fun x -> try List.assoc x m with Not_found -> x)
+
+let rec substitute_vars m = function
+  | Equal (t1, t2) -> Equal (Predicate.substitute_vars m t1, Predicate.substitute_vars m t2)
+  | Less  (t1, t2) -> Less (Predicate.substitute_vars m t1, Predicate.substitute_vars m t2)
+  | LessEq (t1, t2) -> LessEq (Predicate.substitute_vars m t1, Predicate.substitute_vars m t2)
+  | Pred (p) ->
+    let (n, _a, ts) = Predicate.get_info p in
+    Pred (Predicate.make_predicate (n, List.map (Predicate.substitute_vars m) ts))
+  | Neg f -> Neg (substitute_vars m f)
+  | Exists (v, f) ->
+      let fresh, m' = avoid_capture v (free_vars f) m in
+      Exists (subst_vars fresh v, substitute_vars m' f)
+  | ForAll (v, f) ->
+      let fresh, m' = avoid_capture v (free_vars f) m in
+      ForAll (subst_vars fresh v, substitute_vars m' f)
+  | Aggreg (y, op, x, g, f) ->
+      let fv = free_vars f in
+      let bound = Misc.diff fv g in
+      let fresh, m' = avoid_capture bound fv m in
+      let subst m v = try List.assoc v m with Not_found -> Var v in
+      let unvar = function
+        | Var x -> x
+        | _ -> failwith "[MFOTL.substitute_vars] cannot substitute aggregation variable with term"
+      in
+      let y = unvar (subst m y) in
+      let x = try List.assoc x fresh with Not_found -> x in
+      let g = List.map (fun x -> unvar (subst m x)) g in
+      Aggreg (y, op, x, g, substitute_vars m' f)
+  | Prev (i, f) -> Prev (i, substitute_vars m f)
+  | Next (i, f) -> Next (i, substitute_vars m f)
+  | Once (i, f) -> Once (i, substitute_vars m f)
+  | PastAlways (i, f) -> PastAlways (i, substitute_vars m f)
+  | Eventually (i, f) -> Eventually (i, substitute_vars m f)
+  | Always (i, f) -> Always (i, substitute_vars m f)
+  | And (f1, f2) -> And (substitute_vars m f1, substitute_vars m f2)
+  | Or (f1, f2) -> Or (substitute_vars m f1, substitute_vars m f2)
+  | Implies (f1, f2) -> Implies (substitute_vars m f1, substitute_vars m f2)
+  | Equiv (f1, f2) ->  Equiv (substitute_vars m f1, substitute_vars m f2)
+  | Since (i, f1, f2) -> Since (i, substitute_vars m f1, substitute_vars m f2)
+  | Until (i, f1, f2) -> Until (i, substitute_vars m f1, substitute_vars m f2)
+
+
 let string_of_ts ts =
   if !unixts then
     let tm = Unix.gmtime ts in

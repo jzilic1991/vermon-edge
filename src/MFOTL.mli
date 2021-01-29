@@ -123,6 +123,8 @@ val is_temporal: formula -> bool
 val free_vars: formula -> var list
   (** [free_vars f] returns the list of free variables of [f]. *)
 
+val substitute_vars: (var * term) list -> formula -> formula
+
 
 (** Conversion functions: *)
 
