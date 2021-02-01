@@ -206,7 +206,7 @@ let rec free_vars = function
 let avoid_capture v fv m =
   let m_range = List.flatten (List.map (fun (_,t) -> Predicate.tvars t) m) in
   let capturing = List.filter (fun x -> List.mem x m_range) v in
-  let fresh = Predicate.fresh_var_mapping fv capturing in
+  let fresh = Predicate.fresh_var_mapping (Misc.union fv m_range) capturing in
   let m' = List.filter (fun (x,_) -> not (List.mem x v)) m in
   (fresh, m' @ Predicate.mk_subst fresh)
 
