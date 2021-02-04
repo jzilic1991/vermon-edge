@@ -61,17 +61,21 @@ and confirm the question about removing the package.
 
 ### Manual build
 
-If you want compile MonPoly manually, e.g., for development purposed, you may
+If you want to compile MonPoly manually, e.g., for development purposed, you may
 find the following commands useful. They assume that Dune >= 2.8 is available.
 ```
 # Compile the project:
 dune build
+
 # Compile the project in release mode:
 dune build --release
+
 # Run automatic tests:
 dune test
+
 # Run the previously compiled MonPoly executable:
 dune exec -- monpoly [ARGUMENTS ...]
+
 # Remove build artifacts:
 dune clean
 ```
