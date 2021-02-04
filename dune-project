@@ -1,6 +1,5 @@
 (lang dune 2.8)
 (name monpoly)
-(version 1.1.10)
 
 (generate_opam_files true)
 (cram enable)
@@ -27,4 +26,5 @@ MonPoly is a prototype monitoring tool. It checks the compliance of log files
 with respect to policies that are specified by formulas in Metric First-Order
 Temporal Logic (MFOTL) with aggregations.")
   (depends
-    (ocaml (>= 4.11))))
+    (ocaml (>= 4.11))
+    dune-build-info))
