@@ -41,27 +41,34 @@ opam init  # skip this if you have used OPAM before
 opam switch create 4.11.1
 eval $(opam env)
 ```
-Dune will be obtained automatically in the next step.
+
+Missing dependencies including Dune can be installed with
+```
+opam install --deps-only .
+```
 
 ### Quick installation
 
 To compile and install MonPoly, just do
 ```
-opam install .
+dune build --release
+dune install
 ```
 in the root directory of the project. Assuming that OPAM has been set up
 correctly, the `monpoly` command should then be available to the installing
-user.
+user. You can pass a custom installation path to the install command with the
+`--prefix=PATH` option. For example, `dune install --prefix=/usr/local` makes
+MonPoly globally available to all users.
 
 To uninstall MonPoly, do
 ```
-opam unpin monpoly
+dune uninstall
 ```
-and confirm the question about removing the package.
+If you used `--prefix`, you must supply it again with the same path.
 
 ### Manual build
 
-If you want to compile MonPoly manually, e.g., for development purposed, you may
+If you want to compile MonPoly manually, e.g., for development purposes, you may
 find the following commands useful. They assume that Dune >= 2.8 is available.
 ```
 # Compile the project:

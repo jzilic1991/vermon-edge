@@ -27,4 +27,5 @@ with respect to policies that are specified by formulas in Metric First-Order
 Temporal Logic (MFOTL) with aggregations.")
   (depends
     (ocaml (>= 4.11))
+    (dune (>= 2.8))
     dune-build-info))
