@@ -6,6 +6,14 @@ Version 1.1.11
   capture of alpha's free variables by the quantifier. If this rewrite
   rule is applied, the bound variables are now substituted by fresh
   variables first.
+- Bug fix (reported by Dawit Legesse Tirore): Formulas of the forms
+      alpha AND (beta SINCE[a,b) gamma)
+      alpha AND (beta UNTIL[a,b) gamma)
+  with finite b were incorrectly rewritten to
+      alpha AND ((EVENTUALLY[a,b) alpha) AND beta SINCE[a,b) gamma)
+      alpha AND ((ONCE[a,b) alpha) AND beta UNTIL[a,b) gamma)
+  To yield equivalent formulas, the interval of the inserted operator
+  must be extended to [0,b).
 - Internal: Use Dune as the build system.
 
 Version 1.1.10
@@ -23,7 +31,7 @@ Version 1.1.10
       min     int   / 0     float / inf     string / ""
       max     int   / 0     float / -inf    string / ""
       med     float / 0.    float / 0       (not supported)
-    
+
     Each cell in the table shows the type of the result value / the
     default value.
 
