@@ -6,3 +6,7 @@
 
 (ocamllex formula_lexer log_lexer)
 (ocamlyacc formula_parser log_parser)
+
+(env
+  (release
+    (flags (:standard -noassert))))
