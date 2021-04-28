@@ -1,8 +1,6 @@
+dune-workspace
 _build
 /monpoly.install
 
 *~
 \#*\#
-
-*.rej
-*.orig
