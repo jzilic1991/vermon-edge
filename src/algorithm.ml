@@ -4,7 +4,7 @@
  * Copyright (C) 2011 Nokia Corporation and/or its subsidiary(-ies).
  * Contact:  Nokia Corporation (Debmalya Biswas: debmalya.biswas@nokia.com)
  *
- * Copyright (C) 2012 ETH Zurich.
+ * Copyright (C) 2012, 2021 ETH Zurich.
  * Contact:  ETH Zurich (Eugen Zalinescu: eugen.zalinescu@inf.ethz.ch)
  *
  *
@@ -76,7 +76,6 @@ open MFOTL
 open Relation
 open Sliding
 
-module NEval = Dllist
 module Sk = Dllist
 module Sj = Dllist
 
@@ -87,7 +86,7 @@ module Sj = Dllist
 
 type info = (int * timestamp * relation) Queue.t
 type ainfo = {mutable arel: relation option}
-type pinfo = {mutable ptsq: timestamp}
+type pinfo = {mutable plast: Neval.cell}
 type ninfo = {mutable init: bool}
 type oainfo = {mutable ores: relation;
          oaauxrels: (timestamp * relation) Mqueue.t}
@@ -105,22 +104,22 @@ type sainfo = {mutable sres: relation;
                saauxrels: (timestamp * relation) Mqueue.t}
 type sinfo = {mutable srel2: relation option;
               sauxrels: (timestamp * relation) Mqueue.t}
-type ezinfo = {mutable ezlastev: (int * timestamp) NEval.cell;
+type ezinfo = {mutable ezlastev: Neval.cell;
                mutable eztree: (int, relation) Sliding.stree;
                mutable ezlast: (int * timestamp * relation) Dllist.cell;
                ezauxrels: (int * timestamp * relation) Dllist.dllist}
-type einfo = {mutable elastev: (int * timestamp) NEval.cell;
+type einfo = {mutable elastev: Neval.cell;
               mutable etree: (timestamp, relation) Sliding.stree;
               mutable elast: (timestamp * relation) Dllist.cell;
               eauxrels: (timestamp * relation) Dllist.dllist}
-type uinfo = {mutable ulast: (int * timestamp) NEval.cell;
+type uinfo = {mutable ulast: Neval.cell;
               mutable ufirst: bool;
               mutable ures: relation;
               mutable urel2: relation option;
               raux: (int * timestamp * (int * relation) Sk.dllist) Sj.dllist;
               mutable saux: (int * relation) Sk.dllist}
-type uninfo = {mutable last1: (int * timestamp) NEval.cell;
-               mutable last2: (int * timestamp) NEval.cell;
+type uninfo = {mutable last1: Neval.cell;
+               mutable last2: Neval.cell;
                mutable listrel1: (int * timestamp * relation) Dllist.dllist;
                mutable listrel2: (int * timestamp * relation) Dllist.dllist}
 
@@ -158,14 +157,6 @@ let print_bool b =
     print_string "true"
   else
     print_string "false"
-
-let print_neval str neval =
-  print_string str;
-  Misc.print_dllist
-    (fun (q,tsq) ->
-       Printf.printf "(%d,%s)" q (MFOTL.string_of_ts tsq)
-    ) neval;
-  print_newline()
 
 
 let print_ainf str ainf =
@@ -256,14 +247,8 @@ let print_sinf str inf =
 
 
 let print_uinf str inf =
-  Printf.printf "%s{first=%b; " str inf.ufirst;
-  if inf.ulast == NEval.void then
-    print_string "last=None; "
-  else
-    begin
-      let (i,tsi) = NEval.get_data inf.ulast in
-      Printf.printf "last=(%d,%s); " i (MFOTL.string_of_ts tsi)
-    end;
+  Printf.printf "%s{first=%b; last=%s; " str inf.ufirst
+    (Neval.string_of_cell inf.ulast);
   Relation.print_rel "res=" inf.ures;
   print_string "; raux=";
   Misc.print_dllist print_rauxel inf.raux;
@@ -272,16 +257,8 @@ let print_uinf str inf =
   print_endline "}"
 
 let print_uninf str uninf =
-  let get_last last =
-    if last == NEval.void then "None"
-    else
-      begin
-        let i,tsi = NEval.get_data last in
-        Printf.sprintf "(%d,%s)" i (MFOTL.string_of_ts tsi)
-      end
-  in
   Printf.printf "%s{last1=%s; last2=%s; " str
-    (get_last uninf.last1) (get_last uninf.last2);
+    (Neval.string_of_cell uninf.last1) (Neval.string_of_cell uninf.last2);
   print_string "listrel1=";
   Misc.print_dllist print_aauxel uninf.listrel1;
   print_string "; listrel2=";
@@ -289,14 +266,7 @@ let print_uninf str uninf =
   print_string "}\n"
 
 let print_ezinf str inf =
-  Printf.printf "%s{" str;
-  if inf.ezlastev == NEval.void then
-    print_string "ezlastev = None; "
-  else
-    begin
-      let (i,tsi) = NEval.get_data inf.ezlastev in
-      Printf.printf "ezlastev = (%d,%s); " i (MFOTL.string_of_ts tsi)
-    end;
+  Printf.printf "%s{ezlastev = %s; " str (Neval.string_of_cell inf.ezlastev);
   if inf.ezlast == Dllist.void then
     print_string "ezlast = None; "
   else
@@ -311,14 +281,7 @@ let print_ezinf str inf =
 
 
 let print_einf str inf =
-  Printf.printf "%s{" str;
-  if inf.elastev == NEval.void then
-    print_string "elastev = None; "
-  else
-    begin
-      let (i,tsi) = NEval.get_data inf.elastev in
-      Printf.printf "elastev = (%d,%s); " i (MFOTL.string_of_ts tsi)
-    end;
+  Printf.printf "%s{elastev = %s; " str (Neval.string_of_cell inf.elastev);
   if inf.elast == Dllist.void then
     print_string "elast = None; "
   else
@@ -365,8 +328,8 @@ let print_extf str ff =
         | EPrev (intv,f,pinf) ->
           print_string "PREVIOUS";
           MFOTL.print_interval intv;
-          print_string ": ptsq=";
-          MFOTL.print_ts pinf.ptsq;
+          print_string ": plast=";
+          print_string (Neval.string_of_cell pinf.plast);
           print_string "\n";
           print_f_rec (d+1) f
 
@@ -882,23 +845,6 @@ let elim_old_eventually tsq intv inf =
   elim_old_eauxrels ()
 
 
-(* Is 'last' pointing to the last position in neval? *)
-(* This NEval.void hack is ugly, but it seems unavoidable, unless we
-   have a separate [neval] for each subformula *)
-let neval_is_last neval last =
-  (not (last == NEval.void)) && NEval.is_last neval last
-
-(* get the current position to be evaluated (for some subformula) *)
-let neval_get_crt neval last crt q =
-  if last == NEval.void then
-    begin
-      assert(q=0);
-      crt
-    end
-  else
-    NEval.get_next neval last
-
-
 let handle_empty_agg_result {agg_op; agg_default} q tsq rel =
   if Relation.is_empty rel then
     (match agg_default with
@@ -919,21 +865,21 @@ let handle_empty_agg_result {agg_op; agg_default} q tsq rel =
 
 (* Arguments:
    - [f] the current formula
-   - [neval] the list of non-evaluated points
-   - [crt] the current evaluation point (a time point, timestamp pair)
+   - [crt] the current evaluation point (an neval cell)
    - [discard] a boolean; if true then the result is not used
                (only a minimal amount of computation should be done);
                it should not be propagated for temporal subformulas
                (pitfall: possible source of bugs)
 *)
-let rec eval f neval crt discard =
-  let (q,tsq) = NEval.get_data crt in
+let rec eval f crt discard =
+  let (q,tsq) = Neval.get_data crt in
 
   if Misc.debugging Dbg_eval then
     begin
       print_extf "\n[eval] evaluating formula\n" f;
-      Printf.printf "at (%d,%s) with discard=%b and " q (MFOTL.string_of_ts tsq) discard;
-      print_neval "neval=" neval
+      Printf.printf "at (%d,%s) with discard=%b and "
+        q (MFOTL.string_of_ts tsq) discard;
+      Neval.print_queue "neval=" crt
     end;
 
   match f with
@@ -952,7 +898,7 @@ let rec eval f neval crt discard =
     Some rel
 
   | ENeg f1 ->
-    (match eval f1 neval crt discard with
+    (match eval f1 crt discard with
      | Some rel ->
        let res =
          if Relation.is_empty rel then (* false? *)
@@ -965,7 +911,7 @@ let rec eval f neval crt discard =
     )
 
   | EExists (comp,f1) ->
-    (match eval f1 neval crt discard with
+    (match eval f1 crt discard with
      | Some rel -> Some (comp rel)
      | None -> None
     )
@@ -974,7 +920,7 @@ let rec eval f neval crt discard =
     (* we have to store rel1, if f2 cannot be evaluated *)
     let eval_and rel1 =
       if Relation.is_empty rel1 then
-        (match eval f2 neval crt true with
+        (match eval f2 crt true with
          | Some _ ->
            inf.arel <- None;
            Some rel1
@@ -983,7 +929,7 @@ let rec eval f neval crt discard =
            None
         )
       else
-        (match eval f2 neval crt discard with
+        (match eval f2 crt discard with
          | Some rel2 ->
            inf.arel <- None;
            Some (comp rel1 rel2)
@@ -995,14 +941,14 @@ let rec eval f neval crt discard =
     (match inf.arel with
      | Some rel1 -> eval_and rel1
      | None ->
-       (match eval f1 neval crt discard with
+       (match eval f1 crt discard with
         | Some rel1 -> eval_and rel1
         | None -> None
        )
     )
 
   | EAggreg (inf, comp, f) ->
-    (match eval f neval crt discard with
+    (match eval f crt discard with
      | Some rel ->
        Some (if discard then Relation.empty
          else handle_empty_agg_result inf q tsq (comp rel))
@@ -1013,16 +959,16 @@ let rec eval f neval crt discard =
     (* we have to store rel1, if f2 cannot be evaluated *)
     (match inf.arel with
      | Some rel1 ->
-       (match eval f2 neval crt discard with
+       (match eval f2 crt discard with
         | Some rel2 ->
           inf.arel <- None;
           Some (comp rel1 rel2)
         | None -> None
        )
      | None ->
-       (match eval f1 neval crt discard with
+       (match eval f1 crt discard with
         | Some rel1 ->
-          (match eval f2 neval crt discard with
+          (match eval f2 crt discard with
            | Some rel2 -> Some (comp rel1 rel2)
            | None ->
              inf.arel <- Some rel1;
@@ -1034,42 +980,23 @@ let rec eval f neval crt discard =
 
   | EPrev (intv,f1,inf) ->
     if Misc.debugging Dbg_eval then
-      Printf.printf "[eval,Prev] inf.ptsq=%s\n%!" (MFOTL.string_of_ts inf.ptsq);
+      Printf.printf "[eval,Prev] inf.plast=%s\n%!" (Neval.string_of_cell inf.plast);
 
-    if q=0 then
-      begin
-        inf.ptsq <- tsq;
-        Some Relation.empty
-      end
+    if q = 0 then
+      Some Relation.empty
     else
       begin
-        assert(not (inf.ptsq = MFOTL.ts_invalid && NEval.is_first neval crt));
-        let added = ref false in
-        if NEval.is_first neval crt then
-          begin
-            NEval.add_first (q-1,inf.ptsq) neval;
-            added := true;
-          end;
-        let pcrt = NEval.get_prev neval crt in
-        begin
-          let prev_tp, prev_ts = NEval.get_data pcrt in
-          assert(prev_tp = q - 1);
-          assert(prev_ts = inf.ptsq);
-          let orel = eval f1 neval pcrt discard in
-          if !added then
-            ignore(NEval.pop_first neval);
-          match orel with
-          | Some rel1 ->
-            let res =
-              if MFOTL.in_interval (MFOTL.ts_minus tsq inf.ptsq) intv then
-                Some rel1
-              else
-                Some Relation.empty
-            in
-            inf.ptsq <- tsq;
-            res
-          | None -> None
-        end
+        let pcrt = Neval.get_next inf.plast in
+        let pq, ptsq = Neval.get_data pcrt in
+        assert(pq = q-1);
+        match eval f1 pcrt discard with
+        | Some rel1 ->
+          inf.plast <- pcrt;
+          if MFOTL.in_interval (MFOTL.ts_minus tsq ptsq) intv then
+            Some rel1
+          else
+            Some Relation.empty
+        | None -> None
       end
 
   | ENext (intv,f1,inf) ->
@@ -1078,23 +1005,20 @@ let rec eval f neval crt discard =
 
     if inf.init then
       begin
-        match eval f1 neval crt discard with
+        match eval f1 crt discard with
         | Some _ -> inf.init <- false
         | _ -> ()
       end;
 
-    if NEval.is_last neval crt then
+    if Neval.is_last crt then
       None
     else
       begin
-        (* ignore(NEval.pop_first neval); *)
-        let ncrt = NEval.get_next neval crt in
-        let orel = eval f1 neval ncrt discard in
-        (* NEval.add_first (q,tsq) neval; *)
-        match orel with
+        let ncrt = Neval.get_next crt in
+        let nq, ntsq = Neval.get_data ncrt in
+        assert (nq = q+1);
+        match eval f1 ncrt discard with
         | Some rel1 ->
-          let (nq,ntsq) = NEval.get_data ncrt in
-          assert(nq=q+1);
           if MFOTL.in_interval (MFOTL.ts_minus ntsq tsq) intv then
             Some rel1
           else
@@ -1107,7 +1031,7 @@ let rec eval f neval crt discard =
       Printf.printf "[eval,SinceA] q=%d\n%!" q;
 
     let eval_f1 rel2 comp2 =
-      (match eval f1 neval crt false with
+      (match eval f1 crt false with
        | Some rel1 ->
          inf.sarel2 <- None;
          Some (comp2 rel1 rel2)
@@ -1122,7 +1046,7 @@ let rec eval f neval crt discard =
     (match inf.sarel2 with
      | Some rel2 -> eval_f1 rel2 update_sauxrels
      | None ->
-       (match eval f2 neval crt false with
+       (match eval f2 crt false with
         | None -> None
         | Some rel2 -> eval_f1 rel2 update_sauxrels
        )
@@ -1133,7 +1057,7 @@ let rec eval f neval crt discard =
       Printf.printf "[eval,Since] q=%d\n" q;
 
     let eval_f1 rel2 comp2 =
-      (match eval f1 neval crt false with
+      (match eval f1 crt false with
        | Some rel1 ->
          inf.srel2 <- None;
          Some (comp2 rel1 rel2)
@@ -1148,7 +1072,7 @@ let rec eval f neval crt discard =
     (match inf.srel2 with
      | Some rel2 -> eval_f1 rel2 update_sauxrels
      | None ->
-       (match eval f2 neval crt false with
+       (match eval f2 crt false with
         | None -> None
         | Some rel2 -> eval_f1 rel2 update_sauxrels
        )
@@ -1156,7 +1080,7 @@ let rec eval f neval crt discard =
 
 
   | EOnceA ((c,_) as intv, f2, inf) ->
-    (match eval f2 neval crt false with
+    (match eval f2 crt false with
      | None -> None
      | Some rel2 ->
        if Misc.debugging Dbg_eval then
@@ -1178,7 +1102,7 @@ let rec eval f neval crt discard =
     )
 
   | EAggOnce (inf, state, f) ->
-    (match eval f neval crt false with
+    (match eval f crt false with
      | Some rel ->
        state#slide tsq rel;
        Some (if discard then Relation.empty
@@ -1193,7 +1117,7 @@ let rec eval f neval crt discard =
      relations at equal timestamps; otherwise, when 0 is not
      included, we need to use the timepoints. *)
   | EOnceZ (intv,f2,inf) ->
-    (match eval f2 neval crt false with
+    (match eval f2 crt false with
      | None -> None
      | Some rel2 ->
        if Misc.debugging Dbg_eval then
@@ -1203,7 +1127,7 @@ let rec eval f neval crt discard =
     )
 
   | EOnce (intv,f2,inf) ->
-    (match eval f2 neval crt false with
+    (match eval f2 crt false with
      | None -> None
      | Some rel2 ->
        if Misc.debugging Dbg_eval then
@@ -1236,8 +1160,7 @@ let rec eval f neval crt discard =
     if inf.ufirst then
       begin
         inf.ufirst <- false;
-        assert(inf.ulast != NEval.void);
-        let (i,_) = NEval.get_data inf.ulast in
+        let (i,_) = Neval.get_data inf.ulast in
         update_old_until q tsq i intv inf discard;
         if Misc.debugging Dbg_eval then
           print_uinf "[eval,Until,after_update] inf: " inf
@@ -1246,7 +1169,7 @@ let rec eval f neval crt discard =
     (* we first evaluate f2, and then f1 *)
 
     let rec evalf1 i tsi rel2 ncrt =
-      (match eval f1 neval ncrt false with
+      (match eval f1 ncrt false with
        | Some rel1 ->
          update_until q tsq i tsi intv rel1 rel2 inf comp discard;
          inf.urel2 <- None;
@@ -1258,11 +1181,11 @@ let rec eval f neval crt discard =
       )
 
     and evalf2 () =
-      if neval_is_last neval inf.ulast then
+      if Neval.is_last inf.ulast then
         None
       else
-        let ncrt = neval_get_crt neval inf.ulast crt q in
-        let (i,tsi) = NEval.get_data ncrt in
+        let ncrt = Neval.get_next inf.ulast in
+        let (i,tsi) = Neval.get_data ncrt in
         if not (MFOTL.in_left_ext (MFOTL.ts_minus tsi tsq) intv) then
           (* we have the lookahead, we can compute the result *)
           begin
@@ -1279,7 +1202,7 @@ let rec eval f neval crt discard =
             (match inf.urel2 with
              | Some rel2 -> evalf1 i tsi rel2 ncrt
              | None ->
-               (match eval f2 neval ncrt false with
+               (match eval f2 ncrt false with
                 | None -> None
                 | Some rel2 -> evalf1 i tsi rel2 ncrt
                )
@@ -1300,15 +1223,15 @@ let rec eval f neval crt discard =
 
     (* evaluates the subformula f as much as possible *)
     let rec eval_subf f list last  =
-      if neval_is_last neval last then
+      if Neval.is_last last then
         last
       else
-        let ncrt = neval_get_crt neval last crt q in
-        match eval f neval ncrt false with
+        let ncrt = Neval.get_next last in
+        match eval f ncrt false with
         | None -> last
         | Some rel ->
           (* store the result and try the next time point *)
-          let i, tsi = NEval.get_data ncrt in
+          let i, tsi = Neval.get_data ncrt in
           Dllist.add_last (i, tsi, rel) list;
           eval_subf f list ncrt
     in
@@ -1320,12 +1243,12 @@ let rec eval f neval crt discard =
     (* checks whether the position to be evaluated is beyond the interval *)
     let has_lookahead last =
       let ncrt =
-        if neval_is_last neval last then
+        if Neval.is_last last then
           last
         else
-          neval_get_crt neval last crt q
+          Neval.get_next last
       in
-      let _, tsi = NEval.get_data ncrt in
+      let _, tsi = Neval.get_data ncrt in
       not (MFOTL.in_left_ext (MFOTL.ts_minus tsi tsq) intv)
     in
 
@@ -1404,18 +1327,18 @@ let rec eval f neval crt discard =
 
   | EEventuallyZ (intv,f2,inf) ->
     (* contents of inf:
-       elastev: 'a NEval.cell  last cell of neval for which f2 is evaluated
-       eauxrels: info          the auxiliary relations (up to elastev)
+       elastev:  Neval.cell  last cell of neval for which f2 is evaluated
+       eauxrels: info        the auxiliary relations (up to elastev)
     *)
     if Misc.debugging Dbg_eval then
       print_ezinf "[eval,EventuallyZ] inf: " inf;
 
     let rec ez_update () =
-      if neval_is_last neval inf.ezlastev then
+      if Neval.is_last inf.ezlastev then
         None
       else
-        let ncrt = neval_get_crt neval inf.ezlastev crt q in
-        let (i,tsi) = NEval.get_data ncrt in
+        let ncrt = Neval.get_next inf.ezlastev in
+        let (i,tsi) = Neval.get_data ncrt in
         (* Printf.printf "[eval,Eventually] e_update: ncrt.i = %d\n%!" i; *)
         if not (MFOTL.in_left_ext (MFOTL.ts_minus tsi tsq) intv) then
           (* we have the lookahead, we can compute the result *)
@@ -1484,7 +1407,7 @@ let rec eval f neval crt discard =
           end
         else (* we don't have the lookahead -> we cannot compute the result *)
           begin
-            match eval f2 neval ncrt false with
+            match eval f2 ncrt false with
             | None -> None
             | Some rel2 ->
               (* we update the auxiliary relations *)
@@ -1499,8 +1422,8 @@ let rec eval f neval crt discard =
 
   | EEventually (intv,f2,inf) ->
     (* contents of inf:
-       elastev: 'a NEval.cell  last cell of neval for which f2 is evaluated
-       eauxrels: info          the auxiliary relations (up to elastev)
+       elastev:  NEval.cell  last cell of neval for which f2 is evaluated
+       eauxrels: info        the auxiliary relations (up to elastev)
     *)
     if Misc.debugging Dbg_eval then
       print_einfn "[eval,Eventually] inf: " inf;
@@ -1511,11 +1434,11 @@ let rec eval f neval crt discard =
     elim_old_eventually tsq intv inf;
 
     let rec e_update () =
-      if neval_is_last neval inf.elastev then
+      if Neval.is_last inf.elastev then
         None
       else
-        let ncrt = neval_get_crt neval inf.elastev crt q in
-        let (_i,tsi) = NEval.get_data ncrt in
+        let ncrt = Neval.get_next inf.elastev in
+        let (_i,tsi) = Neval.get_data ncrt in
         (* Printf.printf "[eval,Eventually] e_update: ncrt.i = %d\n%!" i; *)
         if not (MFOTL.in_left_ext (MFOTL.ts_minus tsi tsq) intv) then
           (* we have the lookahead, we can compute the result *)
@@ -1568,7 +1491,7 @@ let rec eval f neval crt discard =
           end
         else
           begin
-            match eval f2 neval ncrt false with
+            match eval f2 ncrt false with
             | None -> None
             | Some rel2 ->
               (* we update the auxiliary relations *)
@@ -1661,30 +1584,28 @@ let rec show_results closed i q tsq rel =
 
 
 
-let process_index ff closed neval i =
+let process_index ff closed last i =
   if !Misc.verbose then
     Printf.printf "At time point %d:\n%!" i;
 
-  let rec eval_loop () =
-    if not (NEval.is_empty neval) then
-      let first = NEval.get_first_cell neval in
-      let (q,tsq) = NEval.get_data first in
-      if tsq < MFOTL.ts_max then
-        match eval ff neval first false with
-        | Some rel ->
-          ignore(NEval.pop_first neval);
-          show_results closed i q tsq rel;
-          if !Misc.stop_at_first_viol && not (Relation.is_empty rel) then false
-          else eval_loop ()
-        | None -> true
-      else false
-    else true
+  let rec eval_loop last =
+    let crt = Neval.get_next last in
+    let (q, tsq) = Neval.get_data crt in
+    if tsq < MFOTL.ts_max then
+      match eval ff crt false with
+      | Some rel ->
+        show_results closed i q tsq rel;
+        if !Misc.stop_at_first_viol && not (Relation.is_empty rel) then None
+        else if Neval.is_last crt then Some crt
+        else eval_loop crt
+      | None -> Some last
+    else None
   in
-  eval_loop ()
+  eval_loop last
 
 
-let rec add_ext dbschema f =
-  match f with
+let add_ext dbschema init_cell f =
+  let rec add_ext = function
   | Pred p ->
     EPred (p, Relation.eval_pred p, Queue.create())
 
@@ -1696,10 +1617,10 @@ let rec add_ext dbschema f =
     let rel = Relation.eval_not_equal t1 t2 in
     ERel rel
 
-  | Neg f -> ENeg (add_ext dbschema f)
+  | Neg f -> ENeg (add_ext f)
 
   | Exists (vl, f1) ->
-    let ff1 = add_ext dbschema f1 in
+    let ff1 = add_ext f1 in
     let attr1 = MFOTL.free_vars f1 in
     let pos = List.map (fun v -> Misc.get_pos v attr1) vl in
     let pos = List.sort Stdlib.compare pos in
@@ -1707,8 +1628,8 @@ let rec add_ext dbschema f =
     EExists (comp,ff1)
 
   | Or (f1, f2) ->
-    let ff1 = add_ext dbschema f1 in
-    let ff2 = add_ext dbschema f2 in
+    let ff1 = add_ext f1 in
+    let ff2 = add_ext f2 in
     let attr1 = MFOTL.free_vars f1 in
     let attr2 = MFOTL.free_vars f2 in
     let comp =
@@ -1728,13 +1649,13 @@ let rec add_ext dbschema f =
   | And (f1, f2) ->
     let attr1 = MFOTL.free_vars f1 in
     let attr2 = MFOTL.free_vars f2 in
-    let ff1 = add_ext dbschema f1 in
+    let ff1 = add_ext f1 in
     let f2_is_special = Rewriting.is_special_case attr1 attr2 f2 in
     let ff2 =
       if f2_is_special then ERel Relation.empty
       else match f2 with
-        | Neg f2' -> add_ext dbschema f2'
-        | _ -> add_ext dbschema f2
+        | Neg f2' -> add_ext f2'
+        | _ -> add_ext f2
     in
     let comp =
       if f2_is_special then
@@ -1793,7 +1714,7 @@ let rec add_ext dbschema f =
       | Avg -> Aggreg.avg_once intv eval_x posG
       | Med -> Aggreg.med_once intv eval_x posG
     in
-    EAggOnce ({agg_op = op; agg_default = default}, state, add_ext dbschema f)
+    EAggOnce ({agg_op = op; agg_default = default}, state, add_ext f)
 
   | Aggreg (y, op, x, glist, f) as ff ->
     let default =
@@ -1815,14 +1736,14 @@ let rec add_ext dbschema f =
       | Avg -> Aggreg.avg eval_x posG
       | Med -> Aggreg.med eval_x posG
     in
-    EAggreg ({agg_op = op; agg_default = default}, comp, add_ext dbschema f)
+    EAggreg ({agg_op = op; agg_default = default}, comp, add_ext f)
 
   | Prev (intv, f) ->
-    let ff = add_ext dbschema f in
-    EPrev (intv, ff, {ptsq = MFOTL.ts_invalid})
+    let ff = add_ext f in
+    EPrev (intv, ff, {plast = init_cell})
 
   | Next (intv, f) ->
-    let ff = add_ext dbschema f in
+    let ff = add_ext f in
     ENext (intv, ff, {init = true})
 
   | Since (intv,f1,f2) ->
@@ -1843,8 +1764,8 @@ let rec add_ext dbschema f =
         let matches2 = Table.get_matches attr2 attr1 in
         fun relj rel1 -> Relation.natural_join_sc2 matches2 relj rel1
     in
-    let ff1 = add_ext dbschema ef1 in
-    let ff2 = add_ext dbschema f2 in
+    let ff1 = add_ext ef1 in
+    let ff2 = add_ext f2 in
     if snd intv = Inf then
       let inf = {sres = Relation.empty; sarel2 = None; saauxrels = Mqueue.create()} in
       ESinceA (comp,intv,ff1,ff2,inf)
@@ -1853,12 +1774,12 @@ let rec add_ext dbschema f =
       ESince (comp,intv,ff1,ff2,inf)
 
   | Once ((_, Inf) as intv, f) ->
-    let ff = add_ext dbschema f in
+    let ff = add_ext f in
     EOnceA (intv,ff,{ores = Relation.empty;
                      oaauxrels = Mqueue.create()})
 
   | Once (intv,f) ->
-    let ff = add_ext dbschema f in
+    let ff = add_ext f in
     if fst intv = CBnd MFOTL.ts_null then
       EOnceZ (intv,ff,{oztree = LNode {l = -1;
                                        r = -1;
@@ -1881,8 +1802,8 @@ let rec add_ext dbschema f =
        | _ -> f1,false
       )
     in
-    let ff1 = add_ext dbschema ef1 in
-    let ff2 = add_ext dbschema f2 in
+    let ff1 = add_ext ef1 in
+    let ff2 = add_ext f2 in
     if neg then
       let comp =
         let posl = List.map (fun v -> Misc.get_pos v attr2) attr1 in
@@ -1890,8 +1811,8 @@ let rec add_ext dbschema f =
         fun relj rel1 -> Relation.minus posl relj rel1
       in
       let inf = {
-        last1 = NEval.void;
-        last2 = NEval.void;
+        last1 = init_cell;
+        last2 = init_cell;
         listrel1 = Dllist.empty();
         listrel2 = Dllist.empty()}
       in
@@ -1901,7 +1822,7 @@ let rec add_ext dbschema f =
         let matches2 = Table.get_matches attr2 attr1 in
         fun relj rel1 -> Relation.natural_join_sc2 matches2 relj rel1
       in
-      let inf = {ulast = NEval.void;
+      let inf = {ulast = init_cell;
                  ufirst = false;
                  ures = Relation.empty;
                  urel2 = None;
@@ -1912,25 +1833,25 @@ let rec add_ext dbschema f =
 
 
   | Eventually (intv,f) ->
-    let ff = add_ext dbschema f in
+    let ff = add_ext f in
     if fst intv = CBnd MFOTL.ts_null then
       EEventuallyZ (intv,ff,{eztree = LNode {l = -1;
                                              r = -1;
                                              res = Some (Relation.empty)};
                              ezlast = Dllist.void;
-                             ezlastev = NEval.void;
+                             ezlastev = init_cell;
                              ezauxrels = Dllist.empty()})
     else
       EEventually (intv,ff,{etree = LNode {l = MFOTL.ts_invalid;
                                            r = MFOTL.ts_invalid;
                                            res = Some (Relation.empty)};
                             elast = Dllist.void;
-                            elastev = NEval.void;
+                            elastev = init_cell;
                             eauxrels = Dllist.empty()})
 
   | _ -> failwith "[add_ext] internal error"
-
-
+  in
+  add_ext f
 
 
 let resumefile = ref ""
@@ -1941,17 +1862,18 @@ let lastts = ref MFOTL.ts_invalid
    lexbuf - the lexer buffer (holds current state of the scanner)
    ff - the extended MFOTL formula
    closed - true iff [ff] is a ground formula
-   neval - the queue of no-yet evaluted indexes/entries
+   neval - the queue of not-yet evaluted indexes/entries
+   last - the most recent evaluated index (a cell in the neval queue)
    i - the index of current entry in the log file
    ([i] may be different from the current time point when
    filter_empty_tp is enabled)
 *)
-let check_log lexbuf ff closed neval i =
+let check_log lexbuf ff closed neval last i =
   let finish () =
     if Misc.debugging Dbg_perf then
       Perf.check_log_end i !lastts
   in
-  let rec loop ffl i =
+  let rec loop ffl last i =
     if Misc.debugging Dbg_perf then
       Perf.check_log i !lastts;
     match Log.get_next_entry lexbuf with
@@ -1961,13 +1883,12 @@ let check_log lexbuf ff closed neval i =
           crt_tp := tp;
           crt_ts := ts;
           add_index ff tp ts db;
-          NEval.add_last (tp, ts) neval;
-          let cont = process_index ff closed neval tp in
+          ignore (Neval.append (tp, ts) neval);
+          let cont_last = process_index ff closed last tp in
           lastts := ts;
-          if cont then
-            loop ffl (i + 1)
-          else
-            finish ()
+          (match cont_last with
+          | Some l -> loop ffl l (i + 1)
+          | None -> finish ())
         end
       else
       if !Misc.stop_at_out_of_order_ts then
@@ -1979,18 +1900,21 @@ let check_log lexbuf ff closed neval i =
           Printf.eprintf "[Algorithm.check_log] skipping OUT OF ORDER TIMESTAMP: %s \
                           (last_ts: %s)\n%!"
             (MFOTL.string_of_ts ts) (MFOTL.string_of_ts !lastts);
-          loop ffl i
+          loop ffl last i
         end
 
     | None -> finish ()
   in
-  loop ff i
+  loop ff last i
 
 
-let monitor_lexbuf dbschema  lexbuf f =
-  check_log lexbuf (add_ext dbschema f) (MFOTL.free_vars f = []) (NEval.empty()) 0
+let monitor_lexbuf dbschema lexbuf f =
+  let neval = Neval.create () in
+  let init_cell = Neval.get_last neval in
+  let ff = add_ext dbschema init_cell f in
+  check_log lexbuf ff (MFOTL.free_vars f = []) neval init_cell 0
 
-let monitor_string dbschema  log f =
+let monitor_string dbschema log f =
   (let lexbuf = Lexing.from_string log in
    lastts := MFOTL.ts_invalid;
    crt_tp := -1;
@@ -1998,12 +1922,12 @@ let monitor_string dbschema  log f =
    Log.tp := 0;
    Log.skipped_tps := 0;
    Log.last := false;
-   monitor_lexbuf dbschema  lexbuf f;
-   Lexing.flush_input lexbuf;)
+   monitor_lexbuf dbschema lexbuf f;
+   Lexing.flush_input lexbuf)
 
-let monitor dbschema  logfile =
+let monitor dbschema logfile =
   let lexbuf = Log.log_open logfile in
-  monitor_lexbuf dbschema  lexbuf
+  monitor_lexbuf dbschema lexbuf
 
 
 let test_filter logfile f =
