@@ -69,6 +69,10 @@ type interval = bound * bound
 (** The type of aggregation operators. *)
 type agg_op = Cnt | Min | Max | Sum | Avg | Med
 
+val agg_default_value: agg_op -> tcst -> cst
+(** [agg_default_value op ty] is a "reasonable" constant of type [ty] for the
+    result of an empty [op] aggregation. *)
+
 (** The type of MFOTL formulas. *)
 type formula =
   | Equal of (term * term)
@@ -107,6 +111,9 @@ val ts_minus: timestamp -> timestamp -> tsdiff
 val in_left_ext: tsdiff -> interval -> bool
 val in_right_ext: tsdiff -> interval -> bool
 val in_interval: tsdiff -> interval -> bool
+
+val is_infinite_interval: interval -> bool
+(** Test whether an internal is infinite (unbounded). *)
 
 val init_interval: interval -> interval
 

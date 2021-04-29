@@ -49,6 +49,15 @@ type interval = bound * bound
 
 type agg_op = Cnt | Min | Max | Sum | Avg | Med
 
+let agg_default_value op ty =
+  match op, ty with
+  | Min, TFloat -> Float infinity
+  | Max, TFloat -> Float neg_infinity
+  | _, TFloat -> Float 0.
+  | _, TInt -> Int 0
+  | _, TStr -> Str ""
+
+
 type formula =
   | Equal of (term * term)
   | Less of (term * term)
@@ -141,6 +150,8 @@ let in_left_ext v intv =
 
 let in_interval v intv =
   in_right_ext v intv && in_left_ext v intv
+
+let is_infinite_interval (_, b) = (b = Inf)
 
 let init_interval (_, b) = (CBnd 0., b)
 

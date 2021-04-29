@@ -81,6 +81,10 @@ val avg: cst -> cst -> cst
 val plus: cst -> cst -> cst
 val minus: cst -> cst -> cst
 
+val float_of_cst: cst -> float
+(** [float_of_cst c] is [c] as a floating point number. It is only defined if
+    [c] represents either an integer or a float. *)
+
 (** A predicate consists of a name and a list of term arguments. It is
     thus an atomic formula. *)
 type predicate
