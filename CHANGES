@@ -13,7 +13,14 @@ Version 1.1.11
       alpha AND ((EVENTUALLY[a,b) alpha) AND beta SINCE[a,b) gamma)
       alpha AND ((ONCE[a,b) alpha) AND beta UNTIL[a,b) gamma)
   To yield equivalent formulas, the interval of the inserted operator
-  must be extended to [0,b).
+  is extended to [0,b).
+- Bug fix: Formulas of the form "c <- AGG x ONCE alpha" for any
+  aggregation operator AGG except MIN/MAX used to distinguish between
+  alpha's satisfactions at different time-points. This was a deviation
+  from the semantics published in FMSD 46(3):262–285 (2015).
+- Bug fix: Nesting future operators under PREVIOUS could trigger
+  assertion failures and/or runtime exceptions. The tracking of not yet
+  evaluated time-stamps has been completely reworked to address this.
 - Internal: Use Dune as the build system.
 
 Version 1.1.10
