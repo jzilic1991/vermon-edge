@@ -1,5 +1,6 @@
 Version 1.1.11
 --------------
+- Made FALSE monitorable in every context.
 - Bug fix (reported by Martin Raszyk): Formulas of the form "alpha AND
   (EXISTS x. beta)" are rewritten to "alpha AND (EXISTS x. (alpha AND
   beta))" under some circumstances. The rewriting did not avoid the

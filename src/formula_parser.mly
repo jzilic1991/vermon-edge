@@ -176,7 +176,7 @@
 
 formula:
   | LPA formula RPA                 { f "f()"; $2 }
-  | FALSE                           { f "FALSE"; Less (Cst (Int 0), Cst (Int 0)) }
+  | FALSE                           { f "FALSE"; Equal (Cst (Int 0), Cst (Int 1)) }
   | TRUE                            { f "TRUE"; Equal (Cst (Int 0), Cst (Int 0)) }
   | predicate                       { f "f(pred)"; $1 }
   | term EQ term                    { f "f(eq)"; check (Equal ($1,$3)) }
