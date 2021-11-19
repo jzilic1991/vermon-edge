@@ -1007,7 +1007,7 @@ let rec eval f crt discard =
         | _ -> ()
       end;
 
-    if Neval.is_last crt then
+    if Neval.is_last crt || inf.init then
       None
     else
       begin

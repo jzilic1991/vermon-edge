@@ -22,6 +22,8 @@ Version 1.1.11
 - Bug fix: Nesting future operators under PREVIOUS could trigger
   assertion failures and/or runtime exceptions. The tracking of not yet
   evaluated time-stamps has been completely reworked to address this.
+- Bug fix (reported by Matthieu Gras): Nesting future operators under NEXT could
+  trigger assertion failures.
 - Bug fix (reported by Matthieu Gras): UNTIL operators were sometimes
   evaluated incorrectly.
 - Internal: Use Dune as the build system.
