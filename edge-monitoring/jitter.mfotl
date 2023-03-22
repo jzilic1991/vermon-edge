@@ -1,0 +1,1 @@
+ONCE (jitter(host,del1) AND ts(i)) AND ONCE[tp(i),*) (jitter(host,del2))

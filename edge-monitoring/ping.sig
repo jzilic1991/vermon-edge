@@ -1,0 +1,1 @@
+ping (host:string, lat:float)
