@@ -10,6 +10,8 @@ AND
 AND
 (rcvratio <- AVG ack;host ONCE[0,30s] packet(host,ack,jitter) AND tp(i))
 AND
+(maxjitter <- MAX jitter;host packet(host,ack,jitter) AND tp(i))
+AND
 maxping <= 150.0
 AND 
 avgping <= 150.0
@@ -21,3 +23,5 @@ AND
 cnt >= 5
 AND
 rcvratio >= 0.8
+AND
+maxjitter <= 30

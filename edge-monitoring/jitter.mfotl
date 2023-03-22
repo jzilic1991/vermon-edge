@@ -1,1 +1,7 @@
-ONCE (jitter(host,del1) AND ts(i)) AND ONCE[tp(i),*) (jitter(host,del2))
+(PREV jitter(host,del1))
+AND 
+jitter(host, del2)
+AND
+(((del2 > del1) AND (delta = del2 - del1)) OR ((del1 > del2) AND (delta = del1 - del2)))
+AND
+delta < 30
