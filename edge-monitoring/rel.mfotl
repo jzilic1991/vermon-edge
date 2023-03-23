@@ -1,0 +1,7 @@
+(cntfail <- CNT i;host ONCE[0,10d] fail(host,comp,time) AND tp(i))
+AND
+(mtbf <- AVG d;host ONCE[0,10d] fail(host,comp,time2) AND (PREV(fail(host,comp,time1))) AND (d = time2 - time1) AND tp(i))
+AND
+ts(j) 
+AND 
+(mttf = j / i2f(cntfail))
