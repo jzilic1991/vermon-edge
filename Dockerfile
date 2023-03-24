@@ -1,4 +1,4 @@
-FROM ocaml/opam2:ubuntu-18.04
+FROM ocaml/opam:ubuntu-20.04-ocaml-4.11
 
 RUN sudo apt-get update \
     && sudo apt-get install -y \
@@ -9,7 +9,7 @@ RUN sudo apt-get update \
 
 # RUN opam init -y \
 RUN opam update \
-    && opam switch create 4.05.0 \
+    && opam switch create 4.11.1 \
     && opam install \
        ocamlfind \
        qcheck \

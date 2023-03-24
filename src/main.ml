@@ -105,14 +105,6 @@ let sigalrm_handler =
 let displayver = ref false
 
 
-let print_banner () =
-  let banner =
-    match Build_info.V1.version () with
-    | None -> "MonPoly (development build)"
-    | Some v -> "MonPoly, version " ^ Build_info.V1.Version.to_string v
-  in
-  print_endline banner
-
 let main () =
   Sys.set_signal Sys.sigusr1 sigusr1_handler;
   Sys.set_signal Sys.sigusr2 sigusr2_handler;
@@ -121,7 +113,7 @@ let main () =
   Misc.split_debug !debug;
 
   if !displayver then
-    print_banner ()
+    print_endline ("MonPoly, version " ^ Version.version)
   else if !formulafile = "" then
     print_endline usage_string
   else
