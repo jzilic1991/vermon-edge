@@ -1,7 +1,23 @@
 import asyncio
- 
+
+from flask import Flask, request, jsonify
+
+app = Flask (__name__)
+
+@app.route('/edge-vermon')
+def trace_handler ():
+
+	trace = request.args.get('trace', None)
+	print ("Trace: " + trace)
+
+	asyncio.run (monitor (trace))
+
+	return jsonify ([])
+
+
 # main coroutine
-async def main():
+async def monitor (trace):
+	
 	# create as a subprocess using create_subprocess_exec
 	process = await asyncio.create_subprocess_exec("monpoly", "-sig", "edge-monitoring/netper.sig", "-formula", \
 	"edge-monitoring/netper.mfotl", stdin = asyncio.subprocess.PIPE, stdout = asyncio.subprocess.PIPE)
@@ -21,6 +37,8 @@ async def main():
 
 		except:
 			continue
- 
-# entry point
-asyncio.run(main())
+
+
+if __name__ == "__main__":
+
+	app.run(host = '0.0.0.0', port = 5000, debug = True)

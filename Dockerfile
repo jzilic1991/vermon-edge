@@ -5,6 +5,10 @@ RUN sudo apt-get update \
     subversion \
     m4 \
     libgmp-dev \
+    python3 \
+    python3-pip \
+    python3-dev \
+    build-essential \
     && sudo rm -rf /var/lib/apt/lists/* 
 
 # RUN opam init -y \
@@ -27,4 +31,7 @@ RUN sudo chown -R opam:opam . \
     && eval `opam config env` \
     && make \
     && sudo cp ./monpoly /usr/local/bin/monpoly \
-    && make clean 
+    && make clean
+
+EXPOSE 5000
+ENTRYPOINT [ "python3", "-u", "main.py", "%s" ]
