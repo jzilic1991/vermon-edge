@@ -47,6 +47,7 @@ v_q = Queue ()
 mon = Monpoly (t_q, v_q)
 mon.start ()
 
+
 @app.route('/edge-vermon')
 def trace_handler ():
 
@@ -60,7 +61,6 @@ def trace_handler ():
 	print ("Verdict: " + str(v))
 
 	return jsonify ([v])
-
 
 
 if __name__ == "__main__":
