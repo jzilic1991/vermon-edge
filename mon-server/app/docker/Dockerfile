@@ -33,7 +33,7 @@ WORKDIR ${WDIR}
 ADD . ${WDIR}
 
 # Upgrade pip and install requirements
-RUN pip3 install --upgrade pip; pip3 install --no-cache-dir -r requirements.txt;
+RUN pip3 install --upgrade pip; pip3 install --no-cache-dir -r app/docker/requirements.txt;
 
 RUN sudo chown -R opam:opam . \
     && eval `opam config env` \
@@ -42,4 +42,4 @@ RUN sudo chown -R opam:opam . \
     && make clean
 
 EXPOSE 5000
-ENTRYPOINT [ "python3", "-u", "main.py", "%s" ]
+ENTRYPOINT [ "python3", "-u", "app/app/mon-server.py", "%s" ]

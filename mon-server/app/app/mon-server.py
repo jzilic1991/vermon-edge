@@ -20,8 +20,8 @@ class Monpoly (Process):
 
 	async def __processing (cls):
 
-		proc = await asyncio.create_subprocess_exec("monpoly", "-sig", "edge-monitoring/netper.sig", "-formula", \
-		 	"edge-monitoring/netper.mfotl", stdin = asyncio.subprocess.PIPE, stdout = asyncio.subprocess.PIPE)
+		proc = await asyncio.create_subprocess_exec("monpoly", "-sig", "edge-mon-specs/netper.sig", "-formula", \
+		 	"edge-mon-specs/netper.mfotl", stdin = asyncio.subprocess.PIPE, stdout = asyncio.subprocess.PIPE)
 
 		while True:
 

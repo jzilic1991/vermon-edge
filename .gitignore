@@ -1,6 +1,6 @@
-dune-workspace
-_build
-/monpoly.install
+mon-server/dune-workspace
+mon-server/_build
+mon-server/monpoly.install
 
 *~
 \#*\#

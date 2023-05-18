@@ -18,12 +18,13 @@ print ("Virtual memory free: " + str (vmem.free / 1000000) + " MB, usage: " + st
 disk = psutil.disk_usage ('/')
 print ("Disk free: " + str (disk.free / 1000000) + " MB, usage: " + str (disk.percent) + "%")
 net_io = psutil.net_io_counters (pernic = True)
-print ("ens33 netif packets sent: " + str (net_io['ens33'].packets_sent) + ", packets received: " + \
-	str (net_io['ens33'].packets_recv))
+# print ("ens33 netif packets sent: " + str (net_io['ens33'].packets_sent) + ", packets received: " + \
+# 	str (net_io['ens33'].packets_recv))
+print ("Network interface: " + str (net_io))
 
 # Set vars
 # Remote iperf server IP
-remote_site = '127.0.0.1'
+remote_site = '172.17.137.41'
 # How long to run iperf3 test in seconds
 test_duration = 1
 
@@ -42,6 +43,7 @@ client_tcp.bandwidth = 1000000000
 # Run iperf3 test
 result = client_tcp.run()
 
+print ("Result: " + str (result))
 print ("Upload speed: " + str (int (result.sent_MB_s)) + "MBs")
 print ("Download speed: " + str (int (result.received_MB_s)) + "MBs")
 
