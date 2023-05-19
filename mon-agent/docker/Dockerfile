@@ -1,0 +1,17 @@
+FROM python:3.7.9-slim-buster
+
+RUN apt-get update -y && apt-get install -y --no-install-recommends curl libglu1 libaio1 libaio-dev libjpeg62 libopenjp2-7 libtiff5 libatlas-base-dev python3-pip python3-dev build-essential iperf3 net-tools iputils-ping && rm -rf /var/lib/apt/lists/*
+
+#Allow pi wheels 
+RUN echo "[global]\nextra-index-url=https://www.piwheels.org/simple" >> /etc/pip.conf
+
+#Copy the requirements.txt to leverage Docker cache
+COPY docker/requirements.txt /app/requirements.txt
+WORKDIR /app
+
+# Upgrade pip and install requirements
+RUN pip3 install --upgrade pip; pip3 install --no-cache-dir -r requirements.txt;
+COPY app/ /app
+
+EXPOSE 8000
+ENTRYPOINT [ "python3", "-u", "mon-agent.py", "%s" ]
