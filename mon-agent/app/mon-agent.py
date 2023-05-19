@@ -1,5 +1,17 @@
 import psutil
 import iperf3
+import requests
+
+
+with open('netper.log') as f:
+
+    lines = f.readlines()
+    url = 'http://172.17.137.41:5000/edge-vermon'
+    
+    for l in lines:
+
+        x = requests.get(url, params = { "trace": l })
+        print(x.text)
 
 print ("CPU count: " + str (psutil.cpu_count ()))
 cpu_count = psutil.cpu_count ()
