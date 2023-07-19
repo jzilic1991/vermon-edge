@@ -1,12 +1,12 @@
 import psutil
 import iperf3
 import requests
-
+import time
 
 with open('netper.log') as f:
 
     lines = f.readlines()
-    url = 'http://172.17.137.41:5000/edge-vermon'
+    url = 'http://172.17.0.2:5000/edge-vermon'
     
     for l in lines:
 
@@ -30,13 +30,18 @@ print ("Virtual memory free: " + str (vmem.free / 1000000) + " MB, usage: " + st
 disk = psutil.disk_usage ('/')
 print ("Disk free: " + str (disk.free / 1000000) + " MB, usage: " + str (disk.percent) + "%")
 net_io = psutil.net_io_counters (pernic = True)
+# running docker container on network host
 print ("ens33 netif packets sent: " + str (net_io['ens33'].packets_sent) + ", packets received: " + \
 	str (net_io['ens33'].packets_recv))
+
+# running docker container natively on docker network
+# print ("eth0 netif packets sent: " + str (net_io['eth0'].packets_sent) + ", packets received: " + \
+#    str (net_io['eth0'].packets_recv))
 # print ("Network interface: " + str (net_io))
 
 # Set vars
 # Remote iperf server IP
-remote_site = '172.17.137.41'
+remote_site = '172.19.172.150'
 # How long to run iperf3 test in seconds
 test_duration = 1
 
@@ -54,6 +59,9 @@ client_tcp.bandwidth = 1000000000
 
 # Run iperf3 test
 result = client_tcp.run()
+
+# just for debugging and troubleshooting purposes
+# print ("Result: " + str (result))
 
 print ("Upload speed: " + str (int (result.sent_MB_s)) + "MBs")
 print ("Download speed: " + str (int (result.received_MB_s)) + "MBs")
