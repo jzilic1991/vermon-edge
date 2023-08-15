@@ -1,7 +1,5 @@
-(cntfail <- CNT i;host ONCE[0,10d] fail(host,comp,time) AND tp(i))
+(cnt <- CNT i;host ONCE[0,60d] defect(host,totaltime) AND ts(i))
 AND
-(mtbf <- AVG d;host ONCE[0,10d] fail(host,comp,time2) AND (PREV(fail(host,comp,time1))) AND (d = time2 - time1) AND tp(i))
+defect(host,totaltime)
 AND
-ts(j) 
-AND 
-(mttf = j / i2f(cntfail))
+(dfc = (i2f(cnt) / i2f(totaltime)) * 100000.0) 
