@@ -1,0 +1,11 @@
+(totaltime <- CNT i;host
+	ONCE[0,10s] status (host, indicator)
+		AND ts(i))
+AND
+(uptime <- SUM indicator;host
+	ONCE[0,10s] status (host, indicator)
+		AND ts(i))
+AND
+(avail = 1.0 - ((i2f(totaltime) - i2f(uptime)) / i2f(totaltime)))
+AND
+avail < 0.99

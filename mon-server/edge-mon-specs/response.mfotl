@@ -1,3 +1,5 @@
-(avgresponse <- AVG rsp;host ONCE[0,10s] request(host,t1) AND response(host,t2) AND (rsp = t2 - t1) AND (t2 > t1))
+(avgresponse <- AVG time;host
+	ONCE[0,10s]
+		responsetime(host, time) AND ts(i))
 AND
 avgresponse >= 250.0
