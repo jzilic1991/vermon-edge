@@ -1,68 +1,63 @@
-import asyncio
-
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
 from flask import Flask, request, jsonify
 
-
-class Monpoly (Process):
-
-	def __init__ (self, t_q, v_q):
-
-		Process.__init__(self)
-		self._t_q = t_q
-		self._v_q = v_q
+from util import MonpolyProcName, TracePattern, Util
+from monpoly import Monpoly
 
 
-	def run (cls):
+def init_verifiers ():
 
-		asyncio.run (cls.__processing ())
+	verifiers = dict ()
+
+	for proc_name in (MonpolyProcName):
+
+		mon = Monpoly (Queue (), Queue (), proc_name)
+		verifiers[mon] = (mon.get_incoming_queue (), mon.get_outgoing_queue ())
+		mon.start ()
+
+	return verifiers
 
 
-	async def __processing (cls):
-
-		proc = await asyncio.create_subprocess_exec("monpoly", "-sig", "edge-mon-specs/netper.sig", "-formula", \
-		 	"edge-mon-specs/netper.mfotl", stdin = asyncio.subprocess.PIPE, stdout = asyncio.subprocess.PIPE)
-
-		while True:
-
-			trace = cls._t_q.get ()
-			
-			if trace:
-
-				proc.stdin.write(bytes (trace, 'utf-8'))
-				await proc.stdin.drain()
-
-				try:
-					line = await asyncio.wait_for (proc.stdout.readline(), 0.1)
-					cls._v_q.put (line.decode ())
-
-				except Exception:
-				
-					cls._v_q.put ("")
-					
-
+verifiers = init_verifiers ()
 app = Flask (__name__)
-t_q = Queue ()
-v_q = Queue ()
-mon = Monpoly (t_q, v_q)
-mon.start ()
 
 
 @app.route('/edge-vermon')
 def trace_handler ():
 
-	global t_q, v_q
-	
-	trace = request.args.get('trace', None)
+	global verifiers
+
+	trace = request.args.get ('trace', None)
 	print ("Trace: " + trace)
 
-	t_q.put (trace)
-	v = v_q.get ()
-	print ("Verdict: " + str(v))
+	# find trace pattern that fits given trace
+	for tr_pattern in (TracePattern):
 
-	return jsonify ([v])
+		if tr_pattern.value in trace:
+
+			# iterate verifiers and find which one corresponds to matched trace pattern
+			for mon in verifiers.keys ():
+
+				# iterate trace patterns which are supported by a verifier
+				for tr_target_pattern in mon.get_trace_patterns ():
+
+					# and compare it with required trace pattern
+					if tr_pattern.name == tr_target_pattern.name :
+
+						# route given trace to appropriate verifier via queues
+						verifiers[mon][0].put (trace)
+						v = verifiers[mon][1].get ()
+
+						# send verdict
+						print ("Verdict: " + str(v))
+
+						return jsonify ([v])
+
+	return jsonify ([])
+
+
 
 
 if __name__ == "__main__":
 
-	app.run(host = '0.0.0.0', port = 5000, debug = True)
+	app.run(host = '0.0.0.0', port = 5001, debug = True, use_reloader = False)
