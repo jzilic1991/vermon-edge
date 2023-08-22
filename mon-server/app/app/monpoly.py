@@ -39,8 +39,8 @@ class Monpoly (Process):
 
 	async def __processing (cls):
 
-		proc = await asyncio.create_subprocess_exec ("monpoly", "-sig", "../../edge-mon-specs/" + \
-			str (cls._mon_proc_name.value) + ".sig", "-formula", "../../edge-mon-specs/" + \
+		proc = await asyncio.create_subprocess_exec ("monpoly", "-sig", "edge-mon-specs/" + \
+			str (cls._mon_proc_name.value) + ".sig", "-formula", "edge-mon-specs/" + \
 			str (cls._mon_proc_name.value) + ".mfotl", stdin = asyncio.subprocess.PIPE, \
 			stdout = asyncio.subprocess.PIPE)
 

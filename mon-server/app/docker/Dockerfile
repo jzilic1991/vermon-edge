@@ -41,5 +41,5 @@ RUN sudo chown -R opam:opam . \
     && sudo cp ./monpoly /usr/local/bin/monpoly \
     && make clean
 
-EXPOSE 5000
+EXPOSE 5001
 ENTRYPOINT [ "python3", "-u", "app/app/mon-server.py", "%s" ]

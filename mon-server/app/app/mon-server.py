@@ -1,7 +1,7 @@
 from multiprocessing import Queue
 from flask import Flask, request, jsonify
 
-from util import MonpolyProcName, TracePattern, Util
+from util import MonpolyProcName, TracePattern
 from monpoly import Monpoly
 
 
