@@ -1,0 +1,1 @@
+fail (host:string, comp:string, time:int)

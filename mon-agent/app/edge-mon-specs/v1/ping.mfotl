@@ -1,0 +1,7 @@
+(maxping <- MAX lat;host ONCE[0,30s] ping(host,lat) AND tp(i))
+AND
+(avgping <- AVG lat;host ONCE[0,30s] ping(host,lat) AND tp(i))
+AND
+maxping < 150.0 
+AND 
+avgping < 150.0

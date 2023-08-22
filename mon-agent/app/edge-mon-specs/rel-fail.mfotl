@@ -1,0 +1,7 @@
+(failcnt <- CNT i;host ONCE[0,60s] down(host,uptime) AND ts(i))
+AND
+(uptimesum <- SUM uptime;host ONCE[0,60s] down(host,uptime) AND ts(i))
+AND
+(rel = (i2f(uptimesum) / i2f(failcnt)))
+AND
+rel < 1.0

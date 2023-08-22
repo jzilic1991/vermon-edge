@@ -1,0 +1,1 @@
+status (host:int, indicator:int)

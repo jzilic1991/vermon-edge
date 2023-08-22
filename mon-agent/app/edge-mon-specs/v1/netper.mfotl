@@ -1,0 +1,27 @@
+(mindown <- MIN down;host ONCE[0,30s] netspeed(host,down,up) AND tp(i))
+AND
+(minup <- MIN up;host ONCE[0,30s] netspeed(host,down,up) AND tp(i))
+AND
+(maxping <- MAX lat;host ONCE[0,30s] ping(host,lat) AND tp(i))
+AND
+(avgping <- AVG lat;host ONCE[0,30s] ping(host,lat) AND tp(i))
+AND
+(cnt <- CNT i;host ONCE[0,30s] packet(host,ack,jitter) AND tp(i))
+AND
+(rcvratio <- AVG ack;host ONCE[0,30s] packet(host,ack,jitter) AND tp(i))
+AND
+(maxjitter <- MAX jitter;host packet(host,ack,jitter) AND tp(i))
+AND
+maxping <= 150.0
+AND 
+avgping <= 150.0
+AND
+mindown >= 15.0
+AND
+minup >= 1.0
+AND
+cnt >= 5
+AND
+rcvratio >= 0.8
+AND
+maxjitter <= 30
