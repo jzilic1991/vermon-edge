@@ -1,0 +1,3 @@
+
+	req3 (fail-detector, response, reqs-throughput)
+		AND (NOT (fail-detector > 0) OR response > 0 OR reqs-throughput > 0)
