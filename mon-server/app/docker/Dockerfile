@@ -42,4 +42,4 @@ RUN sudo chown -R opam:opam . \
     && make clean
 
 EXPOSE 5001
-ENTRYPOINT [ "python3", "-u", "app/app/mon-server.py", "%s" ]
+ENTRYPOINT [ "python3", "-u", "app/app/main.py"]

@@ -1,9 +1,11 @@
-from multiprocessing import Queue
+import sys
+
+# from multiprocessing import Queue
 from flask import Flask, request, jsonify
 
-from util import MonpolyProcName, TracePattern
-from monpoly import Monpoly
-from mon-server import MonServer
+# from util import MonpolyProcName, TracePattern
+# from monpoly import Monpoly
+from mon_server import MonServer
 
 
 # def init_verifiers ():
@@ -20,42 +22,44 @@ from mon-server import MonServer
 
 
 # verifiers = init_verifiers ()
-mon_server = MonServer ()
+mon_server = MonServer (sys.argv[1])
 app = Flask (__name__)
 
 
 @app.route('/edge-vermon')
 def trace_handler ():
 
-	global verifiers
+	global mon_server
 
 	trace = request.args.get ('trace', None)
 	print ("Trace: " + trace)
 
-	# find trace pattern that fits given trace
-	for tr_pattern in (TracePattern):
+	v = mon_server.evaluate_trace (trace)
 
-		if tr_pattern.value in trace:
+	# # find trace pattern that fits given trace
+	# for tr_pattern in (TracePattern):
 
-			# iterate verifiers and find which one corresponds to matched trace pattern
-			for mon in verifiers.keys ():
+	# 	if tr_pattern.value in trace:
 
-				# iterate trace patterns which are supported by a verifier
-				for tr_target_pattern in mon.get_trace_patterns ():
+	# 		# iterate verifiers and find which one corresponds to matched trace pattern
+	# 		for mon in verifiers.keys ():
 
-					# and compare it with required trace pattern
-					if tr_pattern.name == tr_target_pattern.name:
+	# 			# iterate trace patterns which are supported by a verifier
+	# 			for tr_target_pattern in mon.get_trace_patterns ():
 
-						# route given trace to appropriate verifier via queues
-						verifiers[mon][0].put (trace)
-						v = verifiers[mon][1].get ()
+	# 				# and compare it with required trace pattern
+	# 				if tr_pattern.name == tr_target_pattern.name:
 
-						# send verdict
-						print ("Verdict: " + str(v))
+	# 					# route given trace to appropriate verifier via queues
+	# 					verifiers[mon][0].put (trace)
+	# 					v = verifiers[mon][1].get ()
 
-						return jsonify ([v])
+	# 					# send verdict
+	# 					print ("Verdict: " + str(v))
 
-	return jsonify ([])
+	# 					return jsonify ([v])
+
+	return jsonify ([v])
 
 
 

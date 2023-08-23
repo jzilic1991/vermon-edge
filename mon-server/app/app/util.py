@@ -20,7 +20,7 @@ class RequirementProcName (Enum):
 	REQ3 = "req-3"
 
 
-class TracePattern (Enum):
+class ObjectivePattern (Enum):
 
 	STATUS = "status"
 	TOTAL_REQS = "totalrequests"
@@ -49,31 +49,43 @@ class Util (object):
 
 	def determine_trace_patterns (mon_proc_name):
 
-		if mon_proc_name == MonpolyProcName.AVAIL_IAAS or \
-			mon_proc_name == MonpolyProcName.AVAIL_SAAS:
+		if mon_proc_name == ObjectiveProcName.AVAIL_IAAS or \
+			mon_proc_name == ObjectiveProcName.AVAIL_SAAS:
 
-			return [TracePattern.STATUS]
+			return [ObjectivePattern.STATUS]
 
-		elif mon_proc_name == MonpolyProcName.REL_DEFECT:
+		elif mon_proc_name == ObjectiveProcName.REL_DEFECT:
 
-			return [TracePattern.DEFECT, TracePattern.TOTAL_REQS]
+			return [ObjectivePattern.DEFECT, ObjectivePattern.TOTAL_REQS]
 
-		elif mon_proc_name == MonpolyProcName.REL_FAIL:
+		elif mon_proc_name == ObjectiveProcName.REL_FAIL:
 
-			return [TracePattern.DOWN]
+			return [ObjectivePattern.DOWN]
 
-		elif mon_proc_name == MonpolyProcName.RESPONSE:
+		elif mon_proc_name == ObjectiveProcName.RESPONSE:
 
-			return [TracePattern.RESPONSE_TIME]
+			return [ObjectivePattern.RESPONSE_TIME]
 
-		elif mon_proc_name == MonpolyProcName.FAIL_DETECT:
+		elif mon_proc_name == ObjectiveProcName.FAIL_DETECT:
 
-			return [TracePattern.HEARTBEAT]
+			return [ObjectivePattern.HEARTBEAT]
 
-		elif mon_proc_name == MonpolyProcName.TH_REQS:
+		elif mon_proc_name == ObjectiveProcName.TH_REQS:
 
-			return [TracePattern.REQUEST]
+			return [ObjectivePattern.REQUEST]
 
-		elif mon_proc_name == MonpolyProcName.TH_PACKETS:
+		elif mon_proc_name == ObjectiveProcName.TH_PACKETS:
 
-			return [TracePattern.PACKETS]
+			return [ObjectivePattern.PACKETS]
+
+		elif mon_proc_name == RequirementProcName.REQ1:
+
+			return [RequirementPattern.REQ1]
+
+		elif mon_proc_name == RequirementProcName.REQ2:
+
+			return [RequirementPattern.REQ2]
+
+		elif mon_proc_name == RequirementProcName.REQ3:
+
+			return [RequirementPattern.REQ3]
