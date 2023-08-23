@@ -1,15 +1,22 @@
-from multiprocessing import Queue
-from flask import Flask, request, jsonify
-
-from util import MonpolyProcName, TracePattern
-from monpoly import Monpoly
+from util import VerificationType, RequirementProcName, ObjectiveProcName
 
 
-def init_verifiers ():
+def get_verifiers (ver_type):
+
+	if ver_type == VerificationType.REQUIREMENT.value:
+
+		return create_verifiers (RequirementProcName)
+
+	elif ver_type == VerificationType.OBJECTIVE.value:
+
+		return create_verifiers (ObjectiveProcName)
+
+
+def create_verifiers (ProcName):
 
 	verifiers = dict ()
 
-	for proc_name in (MonpolyProcName):
+	for proc_name in (ProcName):
 
 		mon = Monpoly (Queue (), Queue (), proc_name)
 		verifiers[mon] = (mon.get_incoming_queue (), mon.get_outgoing_queue ())
@@ -18,46 +25,14 @@ def init_verifiers ():
 	return verifiers
 
 
-verifiers = init_verifiers ()
-app = Flask (__name__)
+class MonServer:
+
+	def __init__ (self, ver_type):
+
+		self._ver_type = ver_type
+		self._verifiers = get_verifiers (self._ver_type)
 
 
-@app.route('/edge-vermon')
-def trace_handler ():
+	def evaluate_event (cls):
 
-	global verifiers
-
-	trace = request.args.get ('trace', None)
-	print ("Trace: " + trace)
-
-	# find trace pattern that fits given trace
-	for tr_pattern in (TracePattern):
-
-		if tr_pattern.value in trace:
-
-			# iterate verifiers and find which one corresponds to matched trace pattern
-			for mon in verifiers.keys ():
-
-				# iterate trace patterns which are supported by a verifier
-				for tr_target_pattern in mon.get_trace_patterns ():
-
-					# and compare it with required trace pattern
-					if tr_pattern.name == tr_target_pattern.name :
-
-						# route given trace to appropriate verifier via queues
-						verifiers[mon][0].put (trace)
-						v = verifiers[mon][1].get ()
-
-						# send verdict
-						print ("Verdict: " + str(v))
-
-						return jsonify ([v])
-
-	return jsonify ([])
-
-
-
-
-if __name__ == "__main__":
-
-	app.run(host = '0.0.0.0', port = 5001, debug = True, use_reloader = False)
+		

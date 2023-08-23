@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class MonpolyProcName (Enum):
+class ObjectiveProcName (Enum):
 
 	AVAIL_IAAS = "avail-iaas"
 	AVAIL_SAAS = "avail-saas"
@@ -11,6 +11,13 @@ class MonpolyProcName (Enum):
 	FAIL_DETECT = "fail-detector"
 	TH_REQS = "reqs-throughput"
 	TH_PACKETS = "pck-throughput"
+
+
+class RequirementProcName (Enum):
+
+	REQ1 = "req-1"
+	REQ2 = "req-2"
+	REQ3 = "req-3"
 
 
 class TracePattern (Enum):
@@ -23,6 +30,19 @@ class TracePattern (Enum):
 	HEARTBEAT = "heartbeat"
 	REQUEST = "request"
 	PACKETS = "packets"
+
+
+class RequirementPattern (Enum):
+
+	REQ1 = "req1"
+	REQ2 = "req2"
+	REQ3 = "req3"
+
+
+class VerificationType (Enum):
+
+	OBJECTIVE = "obj"
+	REQUIREMENT = "req"
 
 
 class Util (object):
