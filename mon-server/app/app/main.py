@@ -39,10 +39,10 @@ def trace_handler ():
 
 if __name__ == "__main__":
 
-	if mon_server.get_ver_type () == VerificationType.OBJECTIVE.value:
+	#if mon_server.get_ver_type () == VerificationType.OBJECTIVE.value:
 
-		app.run(host = '0.0.0.0', port = 5001, debug = True, use_reloader = False)
+	app.run(host = '0.0.0.0', port = 5001, debug = True, use_reloader = False)
 
-	elif mon_server.get_ver_type () == VerificationType.REQUIREMENT.value:
+	#elif mon_server.get_ver_type () == VerificationType.REQUIREMENT.value:
 
-		app.run (host = '0.0.0.0', port = 5002, debug = True, use_reloader = False)
+	#	app.run (host = '0.0.0.0', port = 5002, debug = True, use_reloader = False)

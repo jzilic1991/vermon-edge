@@ -97,9 +97,9 @@ for filename in files:
         lines = f.readlines()
 
         # for docker deployment
-        # url = 'http://172.17.0.3:5001/edge-vermon'
+        url = 'http://172.17.0.4:5001/edge-vermon'
         # for local native deployment
-        url = 'http://localhost:5001/edge-vermon'
+        # url = 'http://localhost:5001/edge-vermon'
         
         for l in lines:
 

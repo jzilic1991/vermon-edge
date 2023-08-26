@@ -42,12 +42,12 @@ def create_verifiers (ProcName):
 	return verifiers
 
 
-def get_req_ver_url ():
+def get_req_ver_url (ver_type):
 
 	# for docker deployment
-	# return 'http://172.17.0.3:5001/edge-vermon'
+	return 'http://172.17.0.3:5001/edge-vermon'
 	# for local native deployment
-	return 'http://localhost:5002/edge-vermon'
+	# return 'http://localhost:5002/edge-vermon'
 
 
 class MonServer:
@@ -121,7 +121,8 @@ class MonServer:
 				
 					for event in event_traces:
 						
-						x = requests.post (get_req_ver_url (), params = { "trace": event })
+						x = requests.post (get_req_ver_url (cls._ver_type), \
+							params = { "trace": event })
 
 
 
