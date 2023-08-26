@@ -111,11 +111,17 @@ class MonServer:
 			
 			# return requirement event trace if verdict of objective has been updated
 			# otherwise empty string
-			event_trace = cls.__evaluate_verdict_update (verdict, mon_proc_enum)
+			mon_proc_name = cls.__evaluate_verdict_update (verdict, mon_proc_enum)
 
-			if event_trace:
+			if mon_proc_name != "":
+
+				event_traces = cls.__create_event_trace (mon_proc_name)
+
+				if event_traces != []:
 				
-				x = requests.post (get_req_ver_url (), params = { "trace": event_trace })
+					for event in event_traces:
+						
+						x = requests.post (get_req_ver_url (), params = { "trace": event })
 
 
 
@@ -125,7 +131,6 @@ class MonServer:
 			str (mon_proc_enum.name))
 		for mon_proc_name, last_verdict in cls._verdicts.items ():
 
-			print ("Monpoly process name: " + str (mon_proc_name))
 			if mon_proc_name == mon_proc_enum.name:
 				print ("Last verdict: " + str (last_verdict))
 
@@ -133,8 +138,10 @@ class MonServer:
 					(verdict != "" and last_verdict == False):
 					print ("Update has occured!")
 					cls._verdicts[mon_proc_name] = not (cls._verdicts[mon_proc_name])
+					
+					return mon_proc_name
 					# return event trace
-					return cls.__create_event_trace (mon_proc_name)
+					# return cls.__create_event_trace (mon_proc_name)
 
 		# in case of no update then return empty string
 		return ""
@@ -142,9 +149,11 @@ class MonServer:
 
 	def __create_event_trace (cls, proc_name):
 
-		event_trace = "@" + str (int (time.time ())) + " "
+		events = list ()
 
 		for req_pattern_name, obj_proc_names in cls._req_to_obj_map.items ():
+
+			event_trace = "@" + str (int (time.time ())) + " "
 
 			# iterate through list of objective process names
 			for obj_proc_name in obj_proc_names:
@@ -162,10 +171,9 @@ class MonServer:
 						event_trace += str (int(cls._verdicts[obj_name])) + ", "
 
 					event_trace = event_trace[:len(event_trace)-2] + ")"
+					events.append (event_trace)
 					print ("Created verdict event trace: " + str (event_trace))
-					# return event trace after it has been fully constructed
-					return event_trace
+					# when event is constructed then break from inner loop to iterate further events
+					break
 
-		# if event trace is not constructed then return inital value
-		print ("No match! Event trace is " + str (event_trace))
-		return event_trace
+		return events
