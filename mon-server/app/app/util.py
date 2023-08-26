@@ -47,6 +47,7 @@ class VerificationType (Enum):
 
 class Util (object):
 
+	# return trace pattern based on monpoly verifier process naming
 	def determine_trace_patterns (mon_proc_name):
 
 		if mon_proc_name == ObjectiveProcName.AVAIL_IAAS or \
@@ -89,3 +90,15 @@ class Util (object):
 		elif mon_proc_name == RequirementProcName.REQ3:
 
 			return [RequirementPattern.REQ3]
+
+
+	def get_req_obj_dict_mapping ():
+
+		return {RequirementPattern.REQ1.value: [ObjectiveProcName.AVAIL_IAAS.name, \
+					ObjectiveProcName.REL_DEFECT.name, ObjectiveProcName.RESPONSE.name, \
+					ObjectiveProcName.TH_PACKETS.name],\
+				RequirementPattern.REQ2.value: [ObjectiveProcName.AVAIL_SAAS.name,\
+					ObjectiveProcName.REL_FAIL.name, ObjectiveProcName.RESPONSE.name, \
+					ObjectiveProcName.TH_REQS.name],\
+				RequirementPattern.REQ3.value: [ObjectiveProcName.FAIL_DETECT.name,\
+					ObjectiveProcName.RESPONSE.name, ObjectiveProcName.TH_REQS.name]}

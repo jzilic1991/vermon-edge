@@ -95,7 +95,11 @@ for filename in files:
     with open(filename) as f:
 
         lines = f.readlines()
-        url = 'http://172.17.0.3:5001/edge-vermon'
+
+        # for docker deployment
+        # url = 'http://172.17.0.3:5001/edge-vermon'
+        # for local native deployment
+        url = 'http://localhost:5001/edge-vermon'
         
         for l in lines:
 
