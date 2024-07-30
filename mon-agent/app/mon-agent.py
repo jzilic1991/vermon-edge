@@ -2,6 +2,7 @@ import psutil
 import iperf3
 import requests
 import time
+import sys
 
 
 def server_monitoring ():
@@ -90,6 +91,7 @@ files = ["edge-mon-specs/avail-iaas.log",\
     "edge-mon-specs/pck-throughput.log",\
     "edge-mon-specs/reqs-throughput.log"]
 
+print (sys.argv)
 for filename in files:
     
     with open(filename) as f:
@@ -97,7 +99,7 @@ for filename in files:
         lines = f.readlines()
 
         # for docker deployment
-        url = 'http://172.17.0.4:5001/edge-vermon'
+        url = 'http://' + str(sys.argv[2]) + '/edge-vermon'
         # for local native deployment
         # url = 'http://localhost:5001/edge-vermon'
         
