@@ -9,7 +9,7 @@ from util import VerificationType
 
 
 # verifiers = init_verifiers ()
-mon_server = MonServer (sys.argv[1])
+mon_server = MonServer (sys.argv[1], sys.argv[2])
 app = Flask (__name__)
 
 

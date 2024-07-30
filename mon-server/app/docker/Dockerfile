@@ -9,6 +9,7 @@ RUN sudo apt-get update \
     python3-pip \
     python3-dev \
     build-essential \
+    pkg-config \
     && sudo rm -rf /var/lib/apt/lists/*
 
 #Allow pi wheels 
@@ -27,7 +28,7 @@ RUN opam update \
        num
 
 # RUN useradd -ms /bin/bash monply
-ENV WDIR /home/opam/monpoly
+ENV WDIR=/home/opam/monpoly
 RUN mkdir -p ${WDIR}
 WORKDIR ${WDIR}
 ADD . ${WDIR}

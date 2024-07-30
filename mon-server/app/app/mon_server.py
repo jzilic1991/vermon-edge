@@ -3,178 +3,179 @@ import time
 from multiprocessing import Queue
 
 from util import VerificationType, RequirementProcName, ObjectiveProcName, \
-	RequirementPattern, ObjectivePattern, Util
+  RequirementPattern, ObjectivePattern, Util
 from monpoly import Monpoly
 
 
 def get_tr_patterns (ver_type):
 
-	if ver_type == VerificationType.REQUIREMENT.value:
+  if ver_type == VerificationType.REQUIREMENT.value:
 
-		return RequirementPattern
+    return RequirementPattern
 
-	elif ver_type == VerificationType.OBJECTIVE.value:
+  elif ver_type == VerificationType.OBJECTIVE.value:
 
-		return ObjectivePattern
+    return ObjectivePattern
 
 
 def get_verifiers (ver_type):
 
-	if ver_type == VerificationType.REQUIREMENT.value:
+  if ver_type == VerificationType.REQUIREMENT.value:
 
-		return create_verifiers (RequirementProcName)
+    return create_verifiers (RequirementProcName)
 
-	elif ver_type == VerificationType.OBJECTIVE.value:
+  elif ver_type == VerificationType.OBJECTIVE.value:
 
-		return create_verifiers (ObjectiveProcName)
+    return create_verifiers (ObjectiveProcName)
 
 
 def create_verifiers (ProcName):
 
-	verifiers = dict ()
+  verifiers = dict ()
 
-	for proc_name in (ProcName):
+  for proc_name in (ProcName):
 
-		mon = Monpoly (Queue (), Queue (), proc_name)
-		verifiers[mon] = (mon.get_incoming_queue (), mon.get_outgoing_queue ())
-		mon.start ()
+    mon = Monpoly (Queue (), Queue (), proc_name)
+    verifiers[mon] = (mon.get_incoming_queue (), mon.get_outgoing_queue ())
+    mon.start ()
 
-	return verifiers
+  return verifiers
 
 
-def get_req_ver_url (ver_type):
+def get_req_ver_url (ver_type, socket):
 
-	# for docker deployment
-	return 'http://172.17.0.3:5001/edge-vermon'
-	# for local native deployment
-	# return 'http://localhost:5002/edge-vermon'
+  # for docker deployment
+  return 'http://' + socket +'/edge-vermon'
+  # for local native deployment
+  # return 'http://localhost:5002/edge-vermon'
 
 
 class MonServer:
 
-	def __init__ (self, ver_type):
+  def __init__ (self, ver_type, socket):
 
-		self._ver_type = ver_type
-		self._verifiers = get_verifiers (self._ver_type)
-		self._tr_patterns = get_tr_patterns (self._ver_type)
-		self._verdicts = self.__get_verdicts ()
-		self._req_to_obj_map = Util.get_req_obj_dict_mapping ()
-
-
-	def get_ver_type (cls):
-
-		return cls._ver_type
+    self._ver_type = ver_type
+    self._verifiers = get_verifiers (self._ver_type)
+    self._tr_patterns = get_tr_patterns (self._ver_type)
+    self._verdicts = self.__get_verdicts ()
+    self._req_to_obj_map = Util.get_req_obj_dict_mapping ()
+    self._socket = socket
 
 
-	def evaluate_trace (cls, trace):
+  def get_ver_type (cls):
 
-		# find trace pattern that fits given trace
-		for tr_pattern in (cls._tr_patterns):
-
-			if tr_pattern.value in trace:
-
-				# iterate verifiers and find which one corresponds to matched trace pattern
-				for mon in cls._verifiers.keys ():
-
-					# iterate trace patterns which are supported by a verifier
-					for tr_target_pattern in mon.get_trace_patterns ():
-
-						# and compare it with required trace pattern
-						if tr_pattern.name == tr_target_pattern.name:
-
-							# route given trace to appropriate verifier via queues
-							cls._verifiers[mon][0].put (trace)
-							v = cls._verifiers[mon][1].get ()
-
-							# send verdict
-							print ("Verdict: " + str(v))
-
-							cls.__send_to_req_ver (v, mon.get_mon_proc_enum ())
-
-							return v
+    return cls._ver_type
 
 
-	def __get_verdicts (cls):
+  def evaluate_trace (cls, trace):
 
-		verdicts = dict ()
+    # find trace pattern that fits given trace
+    for tr_pattern in (cls._tr_patterns):
 
-		for mon in cls._verifiers.keys ():
+      if tr_pattern.value in trace:
 
-			verdicts[mon.get_mon_proc_enum ().name] = False
+        # iterate verifiers and find which one corresponds to matched trace pattern
+        for mon in cls._verifiers.keys ():
 
-		return verdicts
+          # iterate trace patterns which are supported by a verifier
+          for tr_target_pattern in mon.get_trace_patterns ():
 
+            # and compare it with required trace pattern
+            if tr_pattern.name == tr_target_pattern.name:
 
-	def __send_to_req_ver (cls, verdict, mon_proc_enum):
+              # route given trace to appropriate verifier via queues
+              cls._verifiers[mon][0].put (trace)
+              v = cls._verifiers[mon][1].get ()
 
-		if cls._ver_type == VerificationType.OBJECTIVE.value:
-			
-			# return requirement event trace if verdict of objective has been updated
-			# otherwise empty string
-			mon_proc_name = cls.__evaluate_verdict_update (verdict, mon_proc_enum)
+              # send verdict
+              print ("Verdict: " + str(v))
 
-			if mon_proc_name != "":
+              cls.__send_to_req_ver (v, mon.get_mon_proc_enum ())
 
-				event_traces = cls.__create_event_trace (mon_proc_name)
-
-				if event_traces != []:
-				
-					for event in event_traces:
-						
-						x = requests.post (get_req_ver_url (cls._ver_type), \
-							params = { "trace": event })
+              return v
 
 
+  def __get_verdicts (cls):
 
-	def __evaluate_verdict_update (cls, verdict, mon_proc_enum):
+    verdicts = dict ()
 
-		print ("Verdict: " + str (verdict[:len(verdict)-1]) + ", verifier process name: " + \
-			str (mon_proc_enum.name))
-		for mon_proc_name, last_verdict in cls._verdicts.items ():
+    for mon in cls._verifiers.keys ():
 
-			if mon_proc_name == mon_proc_enum.name:
-				print ("Last verdict: " + str (last_verdict))
+      verdicts[mon.get_mon_proc_enum ().name] = False
 
-				if (verdict == "" and last_verdict == True) or \
-					(verdict != "" and last_verdict == False):
-					print ("Update has occured!")
-					cls._verdicts[mon_proc_name] = not (cls._verdicts[mon_proc_name])
-					
-					return mon_proc_name
-					# return event trace
-					# return cls.__create_event_trace (mon_proc_name)
-
-		# in case of no update then return empty string
-		return ""
+    return verdicts
 
 
-	def __create_event_trace (cls, proc_name):
+  def __send_to_req_ver (cls, verdict, mon_proc_enum):
 
-		events = list ()
+    if cls._ver_type == VerificationType.OBJECTIVE.value:
 
-		for req_pattern_name, obj_proc_names in cls._req_to_obj_map.items ():
+      # return requirement event trace if verdict of objective has been updated
+      # otherwise empty string
+      mon_proc_name = cls.__evaluate_verdict_update (verdict, mon_proc_enum)
 
-			event_trace = "@" + str (int (time.time ())) + " "
+      if mon_proc_name != "":
 
-			# iterate through list of objective process names
-			for obj_proc_name in obj_proc_names:
+        event_traces = cls.__create_event_trace (mon_proc_name)
 
-				# find which objective has been updated
-				if proc_name == obj_proc_name:
+        if event_traces != []:
 
-					# start creating requirement event trace based on corresponded objective update
-					event_trace += req_pattern_name + "("
+          for event in event_traces:
 
-					# include verdict values from all corresponding objectives of the same requirement
-					for obj_name in cls._req_to_obj_map[req_pattern_name]:
+            x = requests.post (get_req_ver_url (cls._ver_type, cls._socket), \
+              params = { "trace": event })
 
-						# cast verdict boolean value into integer value before string concatination
-						event_trace += str (int(cls._verdicts[obj_name])) + ", "
 
-					event_trace = event_trace[:len(event_trace)-2] + ")"
-					events.append (event_trace)
-					print ("Created verdict event trace: " + str (event_trace))
-					# when event is constructed then break from inner loop to iterate further events
-					break
 
-		return events
+  def __evaluate_verdict_update (cls, verdict, mon_proc_enum):
+
+    print ("Verdict: " + str (verdict[:len(verdict)-1]) + ", verifier process name: " + \
+      str (mon_proc_enum.name))
+    for mon_proc_name, last_verdict in cls._verdicts.items ():
+
+      if mon_proc_name == mon_proc_enum.name:
+        print ("Last verdict: " + str (last_verdict))
+
+      if (verdict == "" and last_verdict == True) or \
+          (verdict != "" and last_verdict == False):
+        print ("Update has occured!")
+        cls._verdicts[mon_proc_name] = not (cls._verdicts[mon_proc_name])
+
+        return mon_proc_name
+        # return event trace
+        # return cls.__create_event_trace (mon_proc_name)
+
+    # in case of no update then return empty string
+    return ""
+
+
+  def __create_event_trace (cls, proc_name):
+
+    events = list ()
+
+    for req_pattern_name, obj_proc_names in cls._req_to_obj_map.items ():
+
+      event_trace = "@" + str (int (time.time ())) + " "
+
+      # iterate through list of objective process names
+      for obj_proc_name in obj_proc_names:
+
+        # find which objective has been updated
+        if proc_name == obj_proc_name:
+
+          # start creating requirement event trace based on corresponded objective update
+          event_trace += req_pattern_name + "("
+
+          # include verdict values from all corresponding objectives of the same requirement
+          for obj_name in cls._req_to_obj_map[req_pattern_name]:
+
+            # cast verdict boolean value into integer value before string concatination
+            event_trace += str (int(cls._verdicts[obj_name])) + ", "
+
+          event_trace = event_trace[:len(event_trace)-2] + ")"
+          events.append (event_trace)
+          print ("Created verdict event trace: " + str (event_trace))
+          # when event is constructed then break from inner loop to iterate further events
+          break
+
+    return events
