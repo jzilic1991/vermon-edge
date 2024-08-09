@@ -1,48 +1,135 @@
+from fastapi import FastAPI, Form, Request, HTTPException
+from fastapi.responses import JSONResponse, PlainTextResponse
+from pydantic import BaseModel
+import httpx
 import sys
+import os
 
-from flask import Flask, request, jsonify
+app = FastAPI()
+FRONTEND_ADDR = os.getenv("FRONTEND_ADDR")
 
-from mon_server import MonServer
-from util import VerificationType
+# Define a BaseModel for request validation
+class TraceRequest(BaseModel):
+    trace: str = None
+    verdict: str = None
+
+BACKEND_SERVICES = {
+    "index": f"http://{FRONTEND_ADDR}/",  
+    "currency": f"http://{FRONTEND_ADDR}/setCurrency",  
+    "product": f"http://{FRONTEND_ADDR}/product",  
+    "cart": f"http://{FRONTEND_ADDR}/cart",  
+    "empty": f"http://{FRONTEND_ADDR}/cart/empty",  
+    "checkout": f"http://{FRONTEND_ADDR}/cart/checkout",  
+    "logout": f"http://{FRONTEND_ADDR}/logout",
+}
+
+# Utility function to forward requests to the backend services
+async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None):
+    if service_name not in BACKEND_SERVICES:
+        raise HTTPException(status_code=404, detail="Service not found")
+
+    url = BACKEND_SERVICES[service_name]
+    if path_params:
+        url = url.rstrip('/') + '/' + '/'.join(path_params.values())
+    
+    async with httpx.AsyncClient() as client:
+        if method == "POST":
+            response = await client.post(url, data = data)
+        elif method == "GET":
+            response = await client.get(url)
+        else:
+            raise HTTPException(status_code=405, detail="Method not allowed")
+        
+        # print ("Response is " + str (response))
+        # response.raise_for_status()  # Raise an exception for HTTP errors
+        try:
+          response_content = response.json()  # Attempt to parse JSON
+        except ValueError:
+          response_content = response.text  # Fallback to raw text if not JSON
+
+        return JSONResponse(content=response_content, status_code=response.status_code)
 
 
+@app.post("/edge-vermon")
+async def trace_handler(request: TraceRequest):
+    param = request.trace
+    verdict_param = request.verdict
+    
+    if param is not None:
+        print("Event trace: " + param)
+        v = mon_server.evaluate_trace(param)
+        return [v]
 
+    if verdict_param is not None:
+        print("Verdict trace:" + verdict_param)
+        v = mon_server.evaluate_trace(verdict_param)
+        print("Requirement evaluation: " + str(v))
+        return {"evaluation": str(v)}
 
-# verifiers = init_verifiers ()
-mon_server = MonServer (sys.argv[1], sys.argv[2])
-app = Flask (__name__)
+    raise HTTPException(status_code=400, detail="No valid parameters provided")
 
+@app.get("/")
+async def get_index():
+    result = await forward_request("index", "GET")
+    return result
 
-@app.route('/edge-vermon', methods = ["GET", "POST"])
-def trace_handler ():
+@app.get("/cart")
+async def get_cart():
+    # Forward the request to the cart service
+    result = await forward_request("cart", "GET")
+    return result
 
-	global mon_server
+@app.post("/cart")
+async def add_to_cart(product_id: str = Form(...), quantity: int = Form (...)):
+    result = {"product_id": product_id, "quantity": quantity}
+    response = await forward_request("cart", "POST", result)
+    return response
 
-	param = request.args.get ('trace', None)
+@app.post("/cart/empty")
+async def empty_cart():
+    result = await forward_request("empty", "POST")
+    return result
 
-	if param != None:
+@app.post("/cart/checkout")
+async def checkout(email: str = Form(...), \
+                   street_address: str = Form(...), \
+                   zip_code: str = Form(...), \
+                   city: str = Form(...), \
+                   state: str = Form(...), \
+                   country: str = Form(...), \
+                   credit_card_number: str = Form(...), \
+                   credit_card_expiration_month: int = Form(...),\
+                   credit_card_expiration_year: int = Form(...),\
+                   credit_card_cvv: str = Form(...)):
+    result = {"email": email, "street_address": street_address, "zip_code": zip_code, "city": city, \
+      "state": state, "country": country, "credit_card_number": credit_card_number, \
+      "credit_card_expiration_month": credit_card_expiration_month,\
+      "credit_card_expiration_year": credit_card_expiration_year,\
+      "credit_card_cvv": credit_card_cvv}
 
-		print ("Event trace: " + param)
-		v = mon_server.evaluate_trace (param)
-		return jsonify ([v])
+    # Forward the request to the cart service
+    response = await forward_request("checkout", "POST", result)
+    return response
 
-	param = request.args.get ('verdict', None)
+@app.get("/logout")
+async def logout():
+    # Forward the request to the cart service (or another service if needed)
+    result = await forward_request("logout", "GET")
+    return result
 
-	if param != None:
+@app.get("/product/{product_id}")
+async def get_product(product_id: str):
+    # Forward the request to the product catalog service
+    response = await forward_request("product", "GET", path_params = {"product_id": product_id})
+    return response
 
-		print ("Verdict trace:" + param)
-		v = mon_server.evaluate_trace (param)
-		print ("Requirement evaluation: " + str (v))
-
-
-
+@app.post("/setCurrency")
+async def set_currency(currency_code: str = Form(...)):
+    result = {"currency_code": currency_code} 
+    # Forward the request to the currency service
+    response = await forward_request("currency", "POST", result)
+    return response
 
 if __name__ == "__main__":
-
-	#if mon_server.get_ver_type () == VerificationType.OBJECTIVE.value:
-
-	app.run(host = '0.0.0.0', port = 5001, debug = True, use_reloader = False)
-
-	#elif mon_server.get_ver_type () == VerificationType.REQUIREMENT.value:
-
-	#	app.run (host = '0.0.0.0', port = 5002, debug = True, use_reloader = False)
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("FASTAPI_PORT")), log_level="info")

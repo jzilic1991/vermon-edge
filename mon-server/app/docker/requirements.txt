@@ -1,2 +1,4 @@
-Flask
-requests
+fastapi
+httpx
+uvicorn
+python-multipart
