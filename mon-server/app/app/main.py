@@ -1,18 +1,47 @@
 from fastapi import FastAPI, Form, Request, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
+from collections import deque 
+from mon_server import MonServer
 import httpx
 import sys
 import os
+import datetime
+import statistics
+from tabulate import tabulate
+from statistics import median
 
-app = FastAPI()
-FRONTEND_ADDR = os.getenv("FRONTEND_ADDR")
+class MetricsDeque:
+    def __init__(self, maxlen = 1000):
+        self.dq = deque(maxlen = maxlen)
+        self.start_time = datetime.datetime.now()
 
-# Define a BaseModel for request validation
+    def append(self, value):
+        self.dq.append(value)
+
+    def avg(self):
+        return sum(self.dq) / len(self.dq) if self.dq else 0
+
+    def med(self):
+        return statistics.median(self.dq) if self.dq else None
+
+    def min(self):
+        return min(self.dq) if self.dq else None
+
+    def max(self):
+        return max(self.dq) if self.dq else None
+
+    def len(self):
+        return len(self.dq)
+
+    def starting_time(self):
+        return self.start_time
+
 class TraceRequest(BaseModel):
     trace: str = None
     verdict: str = None
 
+FRONTEND_ADDR = os.getenv("FRONTEND_ADDR")
 BACKEND_SERVICES = {
     "index": f"http://{FRONTEND_ADDR}/",  
     "currency": f"http://{FRONTEND_ADDR}/setCurrency",  
@@ -23,14 +52,73 @@ BACKEND_SERVICES = {
     "logout": f"http://{FRONTEND_ADDR}/logout",
 }
 
-# Utility function to forward requests to the backend services
+app = FastAPI()
+mon_server = MonServer (sys.argv[1], sys.argv[2])
+metrics_dict = {service: MetricsDeque(maxlen = 1000) for service in BACKEND_SERVICES}
+request_counter = 0
+
+def print_metrics():
+    global metrics_dict
+    headers = ["Type", "Name", "# reqs", "Avg (ms)", "Min (ms)", "Max (ms)", "Med (ms)", "req/s"]
+    rows = []
+    total_requests = 0
+    all_timings = []
+    
+    for service_name, timings in metrics_dict.items():
+        avg = timings.avg()
+        min_time = timings.min()
+        max_time = timings.max()
+        med = timings.med()
+        req_per_sec = timings.len() / (datetime.datetime.now() - timings.starting_time()).total_seconds()
+
+        total_requests += timings.len()
+        all_timings.extend(timings.dq)
+        rows.append([
+            "GET",  # Change to actual request type if needed
+            service_name,
+            timings.len(),
+            f"{avg:.2f}",
+            min_time,
+            max_time,
+            med,
+            f"{req_per_sec:.2f}",
+        ])
+    
+    
+    if all_timings:
+        avg_agg = sum(all_timings) / len(all_timings)
+        min_agg = min(all_timings)
+        max_agg = max(all_timings)
+        med_agg = statistics.median(all_timings)
+        req_per_sec_agg = total_requests / (datetime.datetime.now() - next(iter(metrics_dict.values())).starting_time()).total_seconds()
+    else:
+        avg_agg = min_agg = max_agg = med_agg = req_per_sec_agg = 0
+
+    rows.append([
+        "Aggregated",
+        "",
+        total_requests,
+        f"{avg_agg:.2f}",
+        f"{min_agg:.2f}",
+        f"{max_agg:.2f}",
+        f"{med_agg:.2f}",
+        f"{req_per_sec_agg:.2f}",
+    ])
+    
+    print(tabulate(rows, headers=headers, tablefmt="grid"))
+
+
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None):
+    global metrics_dict, request_counter 
+    
     if service_name not in BACKEND_SERVICES:
         raise HTTPException(status_code=404, detail="Service not found")
 
     url = BACKEND_SERVICES[service_name]
     if path_params:
         url = url.rstrip('/') + '/' + '/'.join(path_params.values())
+    
+    request_start_time = datetime.datetime.now() 
     
     async with httpx.AsyncClient() as client:
         if method == "POST":
@@ -39,15 +127,20 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             response = await client.get(url)
         else:
             raise HTTPException(status_code=405, detail="Method not allowed")
-        
-        # print ("Response is " + str (response))
-        # response.raise_for_status()  # Raise an exception for HTTP errors
-        try:
-          response_content = response.json()  # Attempt to parse JSON
-        except ValueError:
-          response_content = response.text  # Fallback to raw text if not JSON
+    
+    response_end_time = datetime.datetime.now() 
+    response_time = (response_end_time - request_start_time).total_seconds() * 1000
+    metrics_dict[service_name].append(response_time)
+    request_counter += 1
+    if request_counter % 10 == 0:
+        print_metrics()
+    
+    try:
+        response_content = response.json()  
+    except ValueError:
+        response_content = response.text  
 
-        return JSONResponse(content=response_content, status_code=response.status_code)
+    return JSONResponse(content = response_content, status_code = response.status_code)
 
 
 @app.post("/edge-vermon")

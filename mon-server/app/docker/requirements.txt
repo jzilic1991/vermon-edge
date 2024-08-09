@@ -2,3 +2,5 @@ fastapi
 httpx
 uvicorn
 python-multipart
+requests
+tabulate
