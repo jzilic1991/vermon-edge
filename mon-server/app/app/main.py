@@ -8,6 +8,7 @@ import sys
 import os
 import datetime
 import statistics
+import time
 from tabulate import tabulate
 from statistics import median
 
@@ -131,6 +132,11 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     response_end_time = datetime.datetime.now() 
     response_time = (response_end_time - request_start_time).total_seconds() * 1000
     metrics_dict[service_name].append(response_time)
+    trace = "@" + str(time.time()) + " responsetime (1, " + str(response_time) + ")"
+    verdict = mon_server.evaluate_trace(trace)
+    if verdict != "":
+        print("Spec violation! Trace: " + str(verdict))
+    
     request_counter += 1
     if request_counter % 10 == 0:
         print_metrics()

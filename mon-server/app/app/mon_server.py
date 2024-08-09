@@ -1,32 +1,23 @@
-import requests
-import time
 from multiprocessing import Queue
-
 from util import VerificationType, RequirementProcName, ObjectiveProcName, \
   RequirementPattern, ObjectivePattern, Util
 from monpoly import Monpoly
-
+import requests
+import time
 
 def get_tr_patterns (ver_type):
-
   if ver_type == VerificationType.REQUIREMENT.value:
     return RequirementPattern
-
   elif ver_type == VerificationType.OBJECTIVE.value:
     return ObjectivePattern
 
-
 def get_verifiers (ver_type):
-
   if ver_type == VerificationType.REQUIREMENT.value:
     return create_verifiers (RequirementProcName)
-
   elif ver_type == VerificationType.OBJECTIVE.value:
     return create_verifiers (ObjectiveProcName)
 
-
 def create_verifiers (ProcName):
-
   verifiers = dict ()
 
   for proc_name in (ProcName):
@@ -36,19 +27,11 @@ def create_verifiers (ProcName):
 
   return verifiers
 
-
 def get_req_ver_url (ver_type, socket):
-
-  # for docker deployment
   return 'http://' + socket +'/edge-vermon'
-  # for local native deployment
-  # return 'http://localhost:5002/edge-vermon'
-
 
 class MonServer:
-
   def __init__ (self, ver_type, socket):
-
     self._ver_type = ver_type
     self._verifiers = get_verifiers (self._ver_type)
     self._tr_patterns = get_tr_patterns (self._ver_type)
@@ -56,14 +39,10 @@ class MonServer:
     self._req_to_obj_map = Util.get_req_obj_dict_mapping ()
     self._socket = socket
 
-
   def get_ver_type (cls):
-
     return cls._ver_type
 
-
   def evaluate_trace (cls, trace):
-
     # find trace pattern that fits given trace
     for tr_pattern in (cls._tr_patterns):
       if tr_pattern.value in trace:
@@ -76,15 +55,10 @@ class MonServer:
               # route given trace to appropriate verifier via queues
               cls._verifiers[mon][0].put (trace)
               v = cls._verifiers[mon][1].get ()
-              # send verdict
-              print ("Verdict: " + str(v))
               cls.__send_to_req_ver (v, mon.get_mon_proc_enum ())
-
               return v
 
-
   def __get_verdicts (cls):
-
     verdicts = dict ()
 
     for mon in cls._verifiers.keys ():
@@ -92,9 +66,7 @@ class MonServer:
 
     return verdicts
 
-
   def __send_to_req_ver (cls, verdict, mon_proc_enum):
-
     if cls._ver_type == VerificationType.OBJECTIVE.value:
       # return requirement event trace if verdict of objective has been updated
       # otherwise empty string
@@ -106,30 +78,21 @@ class MonServer:
             x = requests.post (get_req_ver_url (cls._ver_type, cls._socket), \
               params = { "trace": event })
 
-
   def __evaluate_verdict_update (cls, verdict, mon_proc_enum):
-
-    print ("Verdict: " + str (verdict[:len(verdict)-1]) + ", verifier process name: " + \
-      str (mon_proc_enum.name))
-    
+    # print ("Verdict: " + str (verdict[:len(verdict)-1]) + ", verifier process name: " + \
+    #   str (mon_proc_enum.name))
     for mon_proc_name, last_verdict in cls._verdicts.items ():
-      if mon_proc_name == mon_proc_enum.name:
-        print ("Last verdict: " + str (last_verdict))
+      # if mon_proc_name == mon_proc_enum.name:
+      #  print ("Last verdict: " + str (last_verdict))
       if (verdict == "" and last_verdict == True) or \
           (verdict != "" and last_verdict == False):
-        print ("Update has occured!")
         cls._verdicts[mon_proc_name] = not (cls._verdicts[mon_proc_name])
 
         return mon_proc_name
-        # return event trace
-        # return cls.__create_event_trace (mon_proc_name)
 
-    # in case of no update then return empty string
     return ""
 
-
   def __create_event_trace (cls, proc_name):
-
     events = list ()
 
     for req_pattern_name, obj_proc_names in cls._req_to_obj_map.items ():
