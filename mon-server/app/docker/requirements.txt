@@ -4,3 +4,6 @@ uvicorn
 python-multipart
 requests
 tabulate
+grpcio
+grpcio-tools
+protobuf
