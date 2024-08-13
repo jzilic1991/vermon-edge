@@ -9,6 +9,7 @@ import os
 import datetime
 import statistics
 import time
+import json
 from tabulate import tabulate
 from statistics import median
 
@@ -42,17 +43,18 @@ class TraceRequest(BaseModel):
     trace: str = None
     verdict: str = None
 
-FRONTEND_ADDR = os.getenv("FRONTEND_ADDR")
-BACKEND_SERVICES = {
-    "index": f"http://{FRONTEND_ADDR}/",  
-    "currency": f"http://{FRONTEND_ADDR}/setCurrency",  
-    "product": f"http://{FRONTEND_ADDR}/product",  
-    "cart": f"http://{FRONTEND_ADDR}/cart",  
-    "empty": f"http://{FRONTEND_ADDR}/cart/empty",  
-    "checkout": f"http://{FRONTEND_ADDR}/cart/checkout",  
-    "logout": f"http://{FRONTEND_ADDR}/logout",
-}
+config_path = '/etc/config/service_paths.json'
+with open(config_path, 'r') as file:
+    service_paths = json.load(file)
 
+print("Service paths: " + str(service_paths))
+
+service_domain = os.getenv('SERVICE_DOMAIN')
+for key in service_paths:
+    service_paths[key] = service_paths[key].replace('http://', service_domain)
+
+print("Service paths: " + str(service_paths))
+BACKEND_SERVICES = service_paths
 app = FastAPI()
 mon_server = MonServer (sys.argv[1], sys.argv[2])
 metrics_dict = {service: MetricsDeque(maxlen = 1000) for service in BACKEND_SERVICES}
