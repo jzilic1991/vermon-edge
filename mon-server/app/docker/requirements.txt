@@ -4,6 +4,6 @@ uvicorn
 python-multipart
 requests
 tabulate
-grpcio
-grpcio-tools
+grpcio==1.65.0
+grpcio-tools==1.65.0
 protobuf
