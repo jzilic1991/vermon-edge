@@ -22,7 +22,7 @@ class ObjectivePattern (Enum):
     DOWN = "down"
     RESPONSE_TIME = "responsetime"
     HEARTBEAT = "heartbeat"
-    REQUEST = "request"
+    REQUESTS = "requests"
     PACKETS = "packets"
 
 class RequirementPattern (Enum):

@@ -13,6 +13,7 @@ import json
 import uvicorn
 from tabulate import tabulate
 from statistics import median
+from util import Util, ObjectiveProcName
 
 class MetricsDeque:
     def __init__(self, maxlen = 1000):
@@ -60,6 +61,24 @@ app = FastAPI()
 mon_server = MonServer (sys.argv[1], sys.argv[2])
 metrics_dict = {service: MetricsDeque(maxlen = 1000) for service in BACKEND_SERVICES}
 request_counter = 0
+req_fail_cnt = 0
+
+async def pooling_task():
+    req_total_prior = 0
+    req_fail_total_prior = 0
+    req_total_residual = 0
+    req_fail_total_residual = 0
+
+    while True:
+        await asyncio.sleep(1)
+        req_total_residual = request_counter - req_total_prior
+        req_total_prior = request_counter
+        req_fail_total_residual = req_fail_cnt - req_fail_total_prior
+        req_fail_total_prior = req_fail_cnt
+        traces = list()
+        traces.append(construct_event_trace(ObjectiveProcName.TH_REQS, req_total_residual))
+        traces.append(construct_event_trace(ObjectiveProcName.REL_DEFECT, req_fail_total_residual))
+        evaluate_event_traces(traces)        
 
 def print_metrics():
     global metrics_dict
@@ -111,9 +130,31 @@ def print_metrics():
     
     print(tabulate(rows, headers=headers, tablefmt="grid"))
 
+def construct_event_trace(trace_type, *args):
+    traces = ""
+    trace_patterns = Util.determine_trace_patterns(trace_type)
+  
+    for trace_pattern in trace_patterns:
+        trace = "@" + time.time() + " " + trace_pattern + "("
+        for arg in args:
+              trace += arg + ","
+        
+        trace[-1] = ")"
+        traces += trace + "\n"
+
+    return traces
+
+def evaluate_event_traces(traces):
+    global mon_server
+
+    for trace in traces:
+        verdict = mon_server.evaluate_trace(trace)
+        if verdict != "":
+            print("Spec violation! Trace: " + str(verdict))
+    
 
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None):
-    global metrics_dict, request_counter 
+    global metrics_dict, request_counter, fail_req_cnt 
     
     if service_name not in BACKEND_SERVICES:
         raise HTTPException(status_code=404, detail="Service not found")
@@ -135,15 +176,14 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     response_end_time = datetime.datetime.now() 
     response_time = (response_end_time - request_start_time).total_seconds() * 1000
     metrics_dict[service_name].append(response_time)
-    trace = "@" + str(time.time()) + " responsetime (1, " + str(response_time) + ")"
-    verdict = mon_server.evaluate_trace(trace)
-    if verdict != "":
-        print("Spec violation! Trace: " + str(verdict))
-    
     request_counter += 1
     if request_counter % 10 == 0:
         print_metrics()
     
+    traces = list()
+    traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, response_time))
+    evaluate_event_traces(traces)
+
     try:
         response_content = response.json()  
     except ValueError:
@@ -169,6 +209,10 @@ async def trace_handler(request: TraceRequest):
         return {"evaluation": str(v)}
 
     raise HTTPException(status_code=400, detail="No valid parameters provided")
+
+@app.on_event("startup")
+async def start_pooling_task():
+    asyncio.create_task(pooling_task())
 
 @app.get("/")
 async def get_index():
