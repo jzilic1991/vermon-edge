@@ -55,7 +55,7 @@ class MonServer:
               # route given trace to appropriate verifier via queues
               cls._verifiers[mon][0].put (trace)
               v = cls._verifiers[mon][1].get ()
-              cls.__send_to_req_ver (v, mon.get_mon_proc_enum ())
+              # cls.__send_to_req_ver (v, mon.get_mon_proc_enum ())
               return v
 
   def __get_verdicts (cls):

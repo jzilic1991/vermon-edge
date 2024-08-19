@@ -48,13 +48,13 @@ config_path = '/etc/config/service_paths.json'
 with open(config_path, 'r') as file:
     service_paths = json.load(file)
 
-print("Service paths: " + str(service_paths))
+# print("Service paths: " + str(service_paths))
 
 service_domain = os.getenv('SERVICE_DOMAIN')
 for key in service_paths:
     service_paths[key] = service_paths[key].replace('http://', service_domain)
 
-print("Service paths: " + str(service_paths))
+# print("Service paths: " + str(service_paths))
 BACKEND_SERVICES = service_paths
 app = FastAPI()
 mon_server = MonServer (sys.argv[1], sys.argv[2])
