@@ -19,6 +19,7 @@ from util import Util, ObjectiveProcName, ObjectivePattern
 class MetricsDeque:
     def __init__(self, maxlen = 1000):
         self.dq = deque(maxlen = maxlen)
+        self.failed_requests = 0
         self.start_time = datetime.datetime.now()
 
     def append(self, value):
@@ -37,7 +38,7 @@ class MetricsDeque:
         return max(self.dq) if self.dq else None
 
     def len(self):
-        return len(self.dq)
+        return len(self.dq) + self.failed_requests
 
     def starting_time(self):
         return self.start_time
@@ -60,7 +61,7 @@ for key in service_paths:
 BACKEND_SERVICES = service_paths
 app = FastAPI()
 mon_server = MonServer (sys.argv[1], sys.argv[2])
-metrics_dict = {service: MetricsDeque(maxlen = 1000) for service in BACKEND_SERVICES}
+metrics_dict = {service: MetricsDeque(maxlen = 10000) for service in BACKEND_SERVICES}
 request_counter = 0
 req_fail_cnt = 0
 host = 1
@@ -87,9 +88,10 @@ async def pooling_task():
 
 def print_metrics():
     global metrics_dict
-    headers = ["Type", "Name", "# reqs", "Avg (ms)", "Min (ms)", "Max (ms)", "Med (ms)", "req/s"]
+    headers = ["Type", "Name", "# reqs", "Failed reqs", "Avg (ms)", "Min (ms)", "Max (ms)", "Med (ms)", "req/s"]
     rows = []
     total_requests = 0
+    total_failed_requests = 0
     all_timings = []
     
     for service_name, timings in metrics_dict.items():
@@ -100,11 +102,13 @@ def print_metrics():
         req_per_sec = timings.len() / (datetime.datetime.now() - timings.starting_time()).total_seconds()
 
         total_requests += timings.len()
+        total_failed_requests += timings.failed_requests 
         all_timings.extend(timings.dq)
         rows.append([
-            "GET",  # Change to actual request type if needed
+            "GET",
             service_name,
             timings.len(),
+            timings.failed_requests,
             f"{avg:.2f}",
             min_time,
             max_time,
@@ -126,6 +130,7 @@ def print_metrics():
         "Aggregated",
         "",
         total_requests,
+        total_failed_requests,  
         f"{avg_agg:.2f}",
         f"{min_agg:.2f}",
         f"{max_agg:.2f}",
@@ -177,25 +182,35 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     
     request_start_time = datetime.datetime.now() 
     
-    async with httpx.AsyncClient() as client:
-        if method == "POST":
-            response = await client.post(url, data = data)
-        elif method == "GET":
-            response = await client.get(url)
+    try:
+        async with httpx.AsyncClient() as client:
+            if method == "POST":
+                response = await client.post(url, data = data)
+            elif method == "GET":
+                response = await client.get(url)
+            else:
+                raise HTTPException(status_code=405, detail="Method not allowed")
+        
+        # Check if the status code is neither 200 OK nor 302 Found
+        request_counter += 1
+        if response.status_code in [200, 302]:
+            response_end_time = datetime.datetime.now() 
+            response_time = (response_end_time - request_start_time).total_seconds() * 1000
+            metrics_dict[service_name].append(response_time)
+            traces = list()
+            traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, host, response_time))
+            evaluate_event_traces(traces)
         else:
-            raise HTTPException(status_code=405, detail="Method not allowed")
+            metrics[service_name].failed_requests += 1
+            fail_req_cnt += 1
+        
+        if request_counter % 50 == 0:
+            print_metrics()
     
-    response_end_time = datetime.datetime.now() 
-    response_time = (response_end_time - request_start_time).total_seconds() * 1000
-    metrics_dict[service_name].append(response_time)
-    request_counter += 1
-    if request_counter % 10 == 0:
-        print_metrics()
     
-    traces = list()
-    traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, host, response_time))
-    evaluate_event_traces(traces)
-
+    except Exception as exp:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {exp}")
+    
     try:
         response_content = response.json()  
     except ValueError:
