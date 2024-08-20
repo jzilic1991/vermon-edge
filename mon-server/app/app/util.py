@@ -49,7 +49,7 @@ class Util (object):
         elif mon_proc_name == ObjectiveProcName.FAIL_DETECT:
             return [ObjectivePattern.HEARTBEAT]
         elif mon_proc_name == ObjectiveProcName.TH_REQS:
-            return [ObjectivePattern.REQUEST]
+            return [ObjectivePattern.REQUESTS]
         elif mon_proc_name == ObjectiveProcName.TH_PACKETS:
             return [ObjectivePattern.PACKETS]
         elif mon_proc_name == RequirementProcName.REQ1:

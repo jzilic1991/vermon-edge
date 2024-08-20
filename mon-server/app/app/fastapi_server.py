@@ -11,9 +11,10 @@ import statistics
 import time
 import json
 import uvicorn
+import asyncio
 from tabulate import tabulate
 from statistics import median
-from util import Util, ObjectiveProcName
+from util import Util, ObjectiveProcName, ObjectivePattern
 
 class MetricsDeque:
     def __init__(self, maxlen = 1000):
@@ -62,22 +63,26 @@ mon_server = MonServer (sys.argv[1], sys.argv[2])
 metrics_dict = {service: MetricsDeque(maxlen = 1000) for service in BACKEND_SERVICES}
 request_counter = 0
 req_fail_cnt = 0
+host = 1
 
 async def pooling_task():
+    global host, request_counter, req_fail_cnt
+
     req_total_prior = 0
     req_fail_total_prior = 0
     req_total_residual = 0
     req_fail_total_residual = 0
 
     while True:
-        await asyncio.sleep(1)
+        await asyncio.sleep(10)
+        print("Pooling...")
         req_total_residual = request_counter - req_total_prior
         req_total_prior = request_counter
         req_fail_total_residual = req_fail_cnt - req_fail_total_prior
         req_fail_total_prior = req_fail_cnt
         traces = list()
-        traces.append(construct_event_trace(ObjectiveProcName.TH_REQS, req_total_residual))
-        traces.append(construct_event_trace(ObjectiveProcName.REL_DEFECT, req_fail_total_residual))
+        traces.append(construct_event_trace(ObjectiveProcName.TH_REQS, host, req_total_residual))
+        traces.append(construct_event_trace(ObjectiveProcName.REL_DEFECT, host, req_fail_total_residual, req_total_residual))
         evaluate_event_traces(traces)        
 
 def print_metrics():
@@ -133,28 +138,35 @@ def print_metrics():
 def construct_event_trace(trace_type, *args):
     traces = ""
     trace_patterns = Util.determine_trace_patterns(trace_type)
-  
-    for trace_pattern in trace_patterns:
-        trace = "@" + time.time() + " " + trace_pattern + "("
-        for arg in args:
-              trace += arg + ","
-        
-        trace[-1] = ")"
-        traces += trace + "\n"
-
+    
+    if trace_type == ObjectiveProcName.RESPONSE:
+        traces += "@" + str(time.time()) + " " + str(trace_patterns[0].value) + " ("
+        traces += str(args[0]) + "," + str(args[1]) + ")"
+    elif trace_type == ObjectiveProcName.TH_REQS:
+        traces += "@" + str(time.time()) + " " + str(trace_patterns[0].value) + " ("
+        traces += str(args[0]) + "," + str(args[1]) + ")"
+    elif trace_type == ObjectiveProcName.REL_DEFECT:
+        traces += "@" + str(time.time()) + " " + str(trace_patterns[0].value) + " ("
+        traces += str(args[0]) + "," + str(args[1]) + ") "
+        traces += str(trace_patterns[1].value) + " ("
+        traces += str(args[0]) + "," + str(args[2]) + ")"
+    
+    #if trace_type != ObjectiveProcName.RESPONSE:
+    #    print("Constructed event traces: " + traces)
     return traces
 
 def evaluate_event_traces(traces):
     global mon_server
 
     for trace in traces:
+        # print("Sending trace " + str(trace))
         verdict = mon_server.evaluate_trace(trace)
-        if verdict != "":
-            print("Spec violation! Trace: " + str(verdict))
+        #if verdict != "":
+        #    print("Spec violation! Trace: " + str(verdict))
     
 
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None):
-    global metrics_dict, request_counter, fail_req_cnt 
+    global metrics_dict, request_counter, fail_req_cnt, host
     
     if service_name not in BACKEND_SERVICES:
         raise HTTPException(status_code=404, detail="Service not found")
@@ -181,7 +193,7 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         print_metrics()
     
     traces = list()
-    traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, response_time))
+    traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, host, response_time))
     evaluate_event_traces(traces)
 
     try:

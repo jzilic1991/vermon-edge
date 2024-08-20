@@ -53,16 +53,17 @@ class MonServer:
             # and compare it with required trace pattern
             if tr_pattern.name == tr_target_pattern.name:
               # route given trace to appropriate verifier via queues
-              cls._verifiers[mon][0].put (trace)
-              v = cls._verifiers[mon][1].get ()
+              cls._verifiers[mon][0].put(trace)
+              v = cls._verifiers[mon][1].get()
               # cls.__send_to_req_ver (v, mon.get_mon_proc_enum ())
+              # print("Trace " + trace + ", verdict: " + str(v))
               return v
 
   def __get_verdicts (cls):
     verdicts = dict ()
 
     for mon in cls._verifiers.keys ():
-      verdicts[mon.get_mon_proc_enum ().name] = False
+      verdicts[mon.get_mon_proc_enum().name] = False
 
     return verdicts
 
