@@ -1,3 +1,4 @@
+import time
 from enum import Enum
 
 class ObjectiveProcName (Enum):
@@ -68,3 +69,21 @@ class Util (object):
             ObjectiveProcName.TH_REQS.name],\
           RequirementPattern.REQ3.value: [ObjectiveProcName.FAIL_DETECT.name,\
             ObjectiveProcName.RESPONSE.name, ObjectiveProcName.TH_REQS.name]}
+
+def construct_event_trace(trace_type, *args):
+    traces = ""
+    trace_patterns = Util.determine_trace_patterns(trace_type)
+
+    if trace_type in [ObjectiveProcName.RESPONSE, ObjectiveProcName.TH_REQS]:
+        traces += f"@{time.time()} {trace_patterns[0].value} ({args[0]},{args[1]})"
+    elif trace_type == ObjectiveProcName.REL_DEFECT:
+        traces += f"@{time.time()} {trace_patterns[0].value} ({args[0]},{args[1]}) {trace_patterns[1].value} ({args[0]},{args[2]})"
+
+    return traces
+
+def evaluate_event_traces(traces, mon_server):
+    print ("Event TRACE: " + str(traces))
+    for trace in traces:
+        verdict = mon_server.evaluate_trace(trace)
+        if verdict:
+            print(f"Spec violation detected! Trace: {verdict}")
