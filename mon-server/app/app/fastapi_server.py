@@ -14,6 +14,7 @@ import asyncio
 from tabulate import tabulate
 from statistics import median
 from util import Util, ObjectiveProcName, ObjectivePattern, construct_event_trace, evaluate_event_traces
+from asyncio import Lock
 
 class MetricsDeque:
     def __init__(self, maxlen = 1000):
@@ -42,6 +43,7 @@ class MetricsDeque:
     def starting_time(self):
         return self.start_time
 
+metrics_lock = Lock()
 class TraceRequest(BaseModel):
     trace: str = None
     verdict: str = None
@@ -151,16 +153,15 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     
     request_start_time = datetime.datetime.now() 
     
-    try:
-        async with httpx.AsyncClient() as client:
-            if method == "POST":
-                response = await client.post(url, data = data)
-            elif method == "GET":
-                response = await client.get(url)
-            else:
-                raise HTTPException(status_code=405, detail="Method not allowed")
+    async with httpx.AsyncClient(timeout = 30.0) as client:
+        if method == "POST":
+            response = await client.post(url, data = data)
+        elif method == "GET":
+            response = await client.get(url)
+        else:
+            raise HTTPException(status_code=405, detail="Method not allowed")
         
-        # Check if the status code is neither 200 OK nor 302 Found
+    async with metrics_lock:
         request_counter += 1
         if response.status_code in [200, 302]:
             response_end_time = datetime.datetime.now() 
@@ -170,15 +171,11 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, host, response_time))
             evaluate_event_traces(traces, mon_server)
         else:
-            metrics[service_name].failed_requests += 1
+            metrics_dict[service_name].failed_requests += 1
             fail_req_cnt += 1
         
         if request_counter % 50 == 0:
             print_metrics()
-    
-    
-    except Exception as exp:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {exp}")
     
     try:
         response_content = response.json()  
