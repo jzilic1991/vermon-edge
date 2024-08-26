@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Form, Request, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
-from collections import deque 
 from mon_server import MonServer
 import httpx
 import sys
@@ -11,37 +10,10 @@ import statistics
 import json
 import uvicorn
 import asyncio
-from tabulate import tabulate
 from statistics import median
-from util import Util, ObjectiveProcName, ObjectivePattern, construct_event_trace, evaluate_event_traces
+from util import Util, MetricsDeque, ObjectiveProcName, ObjectivePattern, pooling_task, construct_event_trace, evaluate_event_traces, print_metrics
+from state import app_state
 from asyncio import Lock
-
-class MetricsDeque:
-    def __init__(self, maxlen = 1000):
-        self.dq = deque(maxlen = maxlen)
-        self.failed_requests = 0
-        self.start_time = datetime.datetime.now()
-
-    def append(self, value):
-        self.dq.append(value)
-
-    def avg(self):
-        return sum(self.dq) / len(self.dq) if self.dq else 0
-
-    def med(self):
-        return statistics.median(self.dq) if self.dq else None
-
-    def min(self):
-        return min(self.dq) if self.dq else None
-
-    def max(self):
-        return max(self.dq) if self.dq else None
-
-    def len(self):
-        return len(self.dq) + self.failed_requests
-
-    def starting_time(self):
-        return self.start_time
 
 metrics_lock = Lock()
 class TraceRequest(BaseModel):
@@ -61,88 +33,10 @@ for key in service_paths:
 # print("Service paths: " + str(service_paths))
 BACKEND_SERVICES = service_paths
 app = FastAPI()
-mon_server = MonServer (sys.argv[1], sys.argv[2])
 metrics_dict = {service: MetricsDeque(maxlen = 10000) for service in BACKEND_SERVICES}
-request_counter = 0
-req_fail_cnt = 0
-host = 1
-
-async def pooling_task():
-    global host, request_counter, req_fail_cnt, mon_server
-
-    req_total_prior = 0
-    req_fail_total_prior = 0
-    req_total_residual = 0
-    req_fail_total_residual = 0
-
-    while True:
-        await asyncio.sleep(10)
-        print("Pooling...")
-        req_total_residual = request_counter - req_total_prior
-        req_total_prior = request_counter
-        req_fail_total_residual = req_fail_cnt - req_fail_total_prior
-        req_fail_total_prior = req_fail_cnt
-        traces = list()
-        traces.append(construct_event_trace(ObjectiveProcName.TH_REQS, host, req_total_residual))
-        traces.append(construct_event_trace(ObjectiveProcName.REL_DEFECT, host, req_fail_total_residual, req_total_residual))
-        evaluate_event_traces(traces, mon_server)        
-
-def print_metrics():
-    global metrics_dict
-    headers = ["Type", "Name", "# reqs", "Failed reqs", "Avg (ms)", "Min (ms)", "Max (ms)", "Med (ms)", "req/s"]
-    rows = []
-    total_requests = 0
-    total_failed_requests = 0
-    all_timings = []
-    
-    for service_name, timings in metrics_dict.items():
-        avg = timings.avg()
-        min_time = timings.min()
-        max_time = timings.max()
-        med = timings.med()
-        req_per_sec = timings.len() / (datetime.datetime.now() - timings.starting_time()).total_seconds()
-
-        total_requests += timings.len()
-        total_failed_requests += timings.failed_requests 
-        all_timings.extend(timings.dq)
-        rows.append([
-            "GET",
-            service_name,
-            timings.len(),
-            timings.failed_requests,
-            f"{avg:.2f}",
-            min_time,
-            max_time,
-            med,
-            f"{req_per_sec:.2f}",
-        ])
-    
-    
-    if all_timings:
-        avg_agg = sum(all_timings) / len(all_timings)
-        min_agg = min(all_timings)
-        max_agg = max(all_timings)
-        med_agg = statistics.median(all_timings)
-        req_per_sec_agg = total_requests / (datetime.datetime.now() - next(iter(metrics_dict.values())).starting_time()).total_seconds()
-    else:
-        avg_agg = min_agg = max_agg = med_agg = req_per_sec_agg = 0
-
-    rows.append([
-        "Aggregated",
-        "",
-        total_requests,
-        total_failed_requests,  
-        f"{avg_agg:.2f}",
-        f"{min_agg:.2f}",
-        f"{max_agg:.2f}",
-        f"{med_agg:.2f}",
-        f"{req_per_sec_agg:.2f}",
-    ])
-    
-    print(tabulate(rows, headers=headers, tablefmt="grid"))
 
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None):
-    global metrics_dict, request_counter, fail_req_cnt, host, mon_server
+    global metrics_dict
     
     if service_name not in BACKEND_SERVICES:
         raise HTTPException(status_code=404, detail="Service not found")
@@ -162,20 +56,20 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             raise HTTPException(status_code=405, detail="Method not allowed")
         
     async with metrics_lock:
-        request_counter += 1
+        app_state.request_counter += 1
         if response.status_code in [200, 302]:
             response_end_time = datetime.datetime.now() 
             response_time = (response_end_time - request_start_time).total_seconds() * 1000
             metrics_dict[service_name].append(response_time)
             traces = list()
-            traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, host, response_time))
-            evaluate_event_traces(traces, mon_server)
+            traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, response_time))
+            evaluate_event_traces(traces)
         else:
             metrics_dict[service_name].failed_requests += 1
-            fail_req_cnt += 1
+            app_state.req_fail_cnt += 1
         
-        if request_counter % 50 == 0:
-            print_metrics()
+        if app_state.request_counter % 50 == 0:
+            print_metrics(metrics_dict)
     
     try:
         response_content = response.json()  
@@ -184,27 +78,12 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
 
     return JSONResponse(content = response_content, status_code = response.status_code)
 
-
-@app.post("/edge-vermon")
-async def trace_handler(request: TraceRequest):
-    param = request.trace
-    verdict_param = request.verdict
-    
-    if param is not None:
-        print("Event trace: " + param)
-        v = mon_server.evaluate_trace(param)
-        return [v]
-
-    if verdict_param is not None:
-        print("Verdict trace:" + verdict_param)
-        v = mon_server.evaluate_trace(verdict_param)
-        print("Requirement evaluation: " + str(v))
-        return {"evaluation": str(v)}
-
-    raise HTTPException(status_code=400, detail="No valid parameters provided")
-
 @app.on_event("startup")
 async def start_pooling_task():
+    app_state.host = 1
+    app_state.request_counter = 0
+    app_state.req_fail_cnt = 0
+    app_state.mon_server = MonServer(sys.argv[1], sys.argv[2])
     asyncio.create_task(pooling_task())
 
 @app.get("/")

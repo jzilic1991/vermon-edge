@@ -6,6 +6,7 @@ import demo_pb2_grpc
 import logging
 import datetime
 from mon_server import MonServer
+from state import app_state
 from concurrent import futures
 from util import ObjectiveProcName, construct_event_trace, evaluate_event_traces
 
@@ -16,8 +17,11 @@ class CartService(demo_pb2_grpc.CartServiceServicer):
     def __init__(self, app_server_address):
         self.channel = grpc.insecure_channel(app_server_address)
         self.stub = demo_pb2_grpc.CartServiceStub(self.channel)
-        self.host = 1
-        self.mon_server = MonServer(sys.argv[1], sys.argv[2])
+        self.app_state = app_state
+        self.app_state.host = 1
+        self.app_state.request_counter = 0
+        self.app_state.req_fail_cnt = 0
+        self.app_state.mon_server = MonServer(sys.argv[1], sys.argv[2])
 
     def AddItem(self, request, context):
         print(f"Forwarding AddItem request for user {request.user_id} to the app container.")
@@ -25,8 +29,8 @@ class CartService(demo_pb2_grpc.CartServiceServicer):
         try:
             response = self.stub.AddItem(request)
             response_time = (datetime.datetime.now() - start_time).total_seconds() * 1000
-            traces = [construct_event_trace(ObjectiveProcName.RESPONSE, self.host, response_time)]
-            evaluate_event_traces(traces, self.mon_server)
+            traces = [construct_event_trace(ObjectiveProcName.RESPONSE, response_time)]
+            evaluate_event_traces(traces)
             
             response_size = len(response.SerializeToString())
             # logging.info(f"AddItem response: {response}, size={response_size} bytes")
@@ -44,8 +48,8 @@ class CartService(demo_pb2_grpc.CartServiceServicer):
             # logging.info(f"Received GetCart request: user_id={request.user_id}, size={request_size} bytes")
             response = self.stub.GetCart(request)
             response_time = (datetime.datetime.now() - start_time).total_seconds() * 1000
-            traces = [construct_event_trace(ObjectiveProcName.RESPONSE, self.host, response_time)]
-            evaluate_event_traces(traces, self.mon_server)
+            traces = [construct_event_trace(ObjectiveProcName.RESPONSE, response_time)]
+            evaluate_event_traces(traces)
             
             response_size = len(response.SerializeToString())
             # logging.info(f"GetCart response: {response}, size={response_size} bytes")
@@ -62,8 +66,8 @@ class CartService(demo_pb2_grpc.CartServiceServicer):
         try:
             response = self.stub.EmptyCart(request)
             response_time = (datetime.datetime.now() - start_time).total_seconds() * 1000
-            traces = [construct_event_trace(ObjectiveProcName.RESPONSE, self.host, response_time)]
-            evaluate_event_traces(traces, self.mon_server)
+            traces = [construct_event_trace(ObjectiveProcName.RESPONSE, response_time)]
+            evaluate_event_traces(traces)
             
             response_size = len(response.SerializeToString())
             # logging.info(f"EmptyCart response: {response}, size={response_size} bytes")
