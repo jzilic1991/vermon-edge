@@ -9,7 +9,8 @@ import asyncio
 from mon_server import MonServer
 from state import app_state
 from concurrent import futures
-from util import MetricsDeque, ObjectiveProcName, pooling_task, print_metrics, construct_event_trace, evaluate_event_traces
+from util import MetricsDeque, pooling_task, print_spec_violation_stats, print_metrics, construct_event_trace, evaluate_event_traces
+from constants import ObjectiveProcName
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.info(f"gRPC version: {grpc.__version__}")
@@ -69,9 +70,10 @@ class CartService(demo_pb2_grpc.CartServiceServicer):
             context.set_details(e.details())
             return demo_pb2.Empty()
     
-    def print_metrics(self):
+    def print_stats(self):
         self.metrics_dict["cart_service"].failed_requests = self.app_state.req_fail_cnt
         print_metrics(self.metrics_dict)
+        print_spec_violation_stats()
 
     def validate_response(self, response_time, response):
         self.app_state.request_counter += 1
@@ -82,7 +84,7 @@ class CartService(demo_pb2_grpc.CartServiceServicer):
         # response_size = len(response.SerializeToString())
         # logging.info(f"AddItem response: {response}, size={response_size} bytes")
         if self.app_state.request_counter % 50 == 0:
-            self.print_metrics()
+            self.print_stats()
 
 def start_grpc_server():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers = 10))

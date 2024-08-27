@@ -1,6 +1,6 @@
 from multiprocessing import Queue
-from util import VerificationType, RequirementProcName, ObjectiveProcName, \
-  RequirementPattern, ObjectivePattern, Util
+from constants import VerificationType, RequirementProcName, ObjectiveProcName, RequirementPattern, ObjectivePattern
+from util import Util
 from monpoly import Monpoly
 import requests
 import time

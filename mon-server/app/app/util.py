@@ -8,40 +8,7 @@ from collections import deque
 from enum import Enum
 from state import app_state
 from asyncio import Lock
-
-class ObjectiveProcName (Enum):
-    AVAIL_IAAS = "avail-iaas"
-    AVAIL_SAAS = "avail-saas"
-    REL_DEFECT = "rel-defect"
-    REL_FAIL = "rel-fail"
-    RESPONSE = "response"
-    FAIL_DETECT = "fail-detector"
-    TH_REQS = "reqs-throughput" 
-    TH_PACKETS = "pck-throughput"
-
-class RequirementProcName (Enum):
-    REQ1 = "req-1"
-    REQ2 = "req-2"
-    REQ3 = "req-3"
-
-class ObjectivePattern (Enum):
-    STATUS = "status"
-    TOTAL_REQS = "totalrequests"
-    DEFECT = "defect"
-    DOWN = "down"
-    RESPONSE_TIME = "responsetime"
-    HEARTBEAT = "heartbeat"
-    REQUESTS = "requests"
-    PACKETS = "packets"
-
-class RequirementPattern (Enum):
-    REQ1 = "req1"
-    REQ2 = "req2"
-    REQ3 = "req3"
-
-class VerificationType (Enum):
-    OBJECTIVE = "obj"
-    REQUIREMENT = "req"
+from constants import ObjectiveProcName, RequirementProcName, ObjectivePattern, RequirementPattern
 
 class Util (object):
     # return trace pattern based on monpoly verifier process naming
@@ -95,6 +62,34 @@ def evaluate_event_traces(traces):
         verdict = app_state.mon_server.evaluate_trace(trace)
         if verdict:
             print(f"Spec violation detected! Trace: {verdict}")
+            objective = extract_objective_from_trace(trace)
+            timestamp = datetime.datetime.now()
+            app_state.spec_violations[objective]["timestamps"].append(timestamp)
+            app_state.spec_violations[objective]["count"] += 1
+
+def extract_objective_from_trace(trace):
+    if ObjectivePattern.RESPONSE_TIME.value in trace:
+        return ObjectiveProcName.RESPONSE
+    elif ObjectivePattern.REQUESTS.value in trace:
+        return ObjectiveProcName.TH_REQS
+    elif ObjectivePattern.DEFECT.value in trace:
+        return ObjectiveProcName.REL_DEFECT
+    return None
+
+def print_spec_violation_stats():
+    headers = ["Objective", "Violations Count", "Last Timestamp"]
+    rows = []
+    
+    for objective, stats in app_state.spec_violations.items():
+        last_timestamp = stats["timestamps"][-1] if stats["timestamps"] else "N/A"
+        rows.append([
+            objective.value,
+            stats["count"],
+            last_timestamp,
+        ])
+    
+    print("\nSpecification Violation Statistics:")
+    print(tabulate(rows, headers=headers, tablefmt="grid"))
 
 class MetricsDeque:
     def __init__(self, maxlen = 1000):

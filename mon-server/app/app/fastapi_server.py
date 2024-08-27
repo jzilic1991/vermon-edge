@@ -11,15 +11,12 @@ import json
 import uvicorn
 import asyncio
 from statistics import median
-from util import Util, MetricsDeque, ObjectiveProcName, ObjectivePattern, pooling_task, construct_event_trace, evaluate_event_traces, print_metrics
+from util import Util, MetricsDeque, pooling_task, construct_event_trace, evaluate_event_traces, print_metrics, print_spec_violation_stats
+from constants import ObjectiveProcName
 from state import app_state
 from asyncio import Lock
 
 metrics_lock = Lock()
-class TraceRequest(BaseModel):
-    trace: str = None
-    verdict: str = None
-
 config_path = '/etc/config/service_paths.json'
 with open(config_path, 'r') as file:
     service_paths = json.load(file)
@@ -70,7 +67,8 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         
         if app_state.request_counter % 50 == 0:
             print_metrics(metrics_dict)
-    
+            print_spec_violation_stats()
+
     try:
         response_content = response.json()  
     except ValueError:
