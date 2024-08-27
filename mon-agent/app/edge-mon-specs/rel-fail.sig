@@ -1,1 +1,0 @@
-down(host:int, uptime:int)

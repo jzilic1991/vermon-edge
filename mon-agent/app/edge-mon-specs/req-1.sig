@@ -1,1 +1,0 @@
-req1 (avail-iaas:int, rel-defect:int, response:int, pck-throughtput:int)

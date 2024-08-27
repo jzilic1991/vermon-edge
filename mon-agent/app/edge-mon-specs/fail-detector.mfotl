@@ -1,3 +1,0 @@
-(_ <- CNT i;host
-	EVENTUALLY[0,3s] heartbeat (host)
-		AND ts(i))

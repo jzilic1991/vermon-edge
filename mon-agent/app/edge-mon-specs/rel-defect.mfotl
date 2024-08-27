@@ -1,7 +1,0 @@
-(sumunreqs <- SUM unreqs;host ONCE[0,60s] defect(host,unreqs) AND ts(i))
-AND
-(sumtotalreqs <- SUM reqs;host ONCE[0,60s] totalrequests(host,reqs) AND ts(i))
-AND
-(dfc = (i2f(sumunreqs) / i2f(sumtotalreqs)) * 100000.0)
-AND
-dfc > 3.0

@@ -1,9 +1,0 @@
-(avgcpu <- AVG cpu;host ONCE[0,30s] comp(host,cpu,mem,stor,cores,freq) AND tp(i))
-AND
-(avgmem <- AVG mem;host ONCE[0,30s] comp(host,cpu,mem,stor,cores,freq) AND tp(i))
-AND
-(avgstor <- AVG stor;host ONCE[0,30s] comp(host,cpu,mem,stor,cores,freq) AND tp(i))
-AND
-comp(host,cpu,mem,stor,cores,freq)
-AND
-(avgcpu >= 90.0 OR avgmem >= 95.0 OR avgstor >= 98.0 OR cores < 2 OR freq < 1800)

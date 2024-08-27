@@ -1,0 +1,77 @@
+# Kubernetes Deployment for mon-agent
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mon-agent
+  labels:
+    app: mon-agent
+spec:
+  selector:
+    matchLabels:
+      app: mon-agent
+  template:
+    metadata:
+      labels:
+        app: mon-agent
+    spec:
+      serviceAccountName: mon-agent
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+      - name: mon-agent-container
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+        image: zikadocker1991/mon-agent:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: 200m
+            memory: 180Mi
+          limits:
+            cpu: 300m
+            memory: 300Mi
+        readinessProbe:
+          initialDelaySeconds: 20
+          periodSeconds: 15
+          httpGet:
+            path: /healthz
+            port: 8000
+        livenessProbe:
+          initialDelaySeconds: 20
+          periodSeconds: 15
+          httpGet:
+            path: /healthz
+            port: 8000
+---
+# Kubernetes Service for mon-agent
+apiVersion: v1
+kind: Service
+metadata:
+  name: mon-agent
+  labels:
+    app: mon-agent
+spec:
+  type: ClusterIP
+  selector:
+    app: mon-agent
+  ports:
+  - name: http
+    port: 8000
+    targetPort: 8000
+---
+# Kubernetes ServiceAccount for mon-agent
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mon-agent
+

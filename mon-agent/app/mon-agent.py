@@ -1,49 +1,40 @@
 import psutil
 import iperf3
-import requests
 import time
-import sys
+from tabulate import tabulate
 
+def server_monitoring():
+    cpu_count = psutil.cpu_count()
+    cpu_freq = psutil.cpu_freq().current / 1000
+    percent_tuple = [(load / cpu_count) * 100 for load in psutil.getloadavg()]
+    cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
+    vmem = psutil.virtual_memory()
+    disk = psutil.disk_usage('/')
+    net_io = psutil.net_io_counters(pernic=True)
+    
+    data = [
+        ["CPU Count", "N/A", cpu_count, "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"],
+        ["CPU Frequency (GHz)", "N/A", "N/A", "N/A", cpu_freq, "N/A", "N/A", "N/A", "N/A"],
+        ["System Load (1 min)", "N/A", percent_tuple[0], "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"],
+        ["System Load (5 min)", "N/A", percent_tuple[1], "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"],
+        ["System Load (15 min)", "N/A", percent_tuple[2], "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"],
+        ["CPU Usage (%)", "Core 0", cpu_percent[0], "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"],
+        *[["CPU Usage (%)", f"Core {i+1}", percent, "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"] for i, percent in enumerate(cpu_percent[1:])],
+        ["Virtual Memory (MB)", "Free", vmem.free / 1000000, "N/A", "N/A", "N/A", "N/A", vmem.percent, "N/A"],
+        ["Disk Usage (MB)", "/", disk.free / 1000000, "N/A", "N/A", "N/A", "N/A", disk.percent, "N/A"],
+        ["Network I/O", "eth0", net_io['eth0'].packets_sent, net_io['eth0'].packets_recv, "N/A", "N/A", "N/A", "N/A", "N/A"]
+    ]
 
-def server_monitoring ():
+    headers = ["Metric", "Detail", "Value", "Failed reqs", "Avg (ms)", "Min (ms)", "Max (ms)", "Med (ms)", "req/s"]
+    
+    print(tabulate(data, headers=headers, tablefmt="grid"))
+    print()
 
-    print ("CPU count: " + str (psutil.cpu_count ()))
-    cpu_count = psutil.cpu_count ()
-    cpu_freq = psutil.cpu_freq ()
-    print ("CPU frequency: " + str (cpu_freq.current / 1000) + " GHz")
-    percent_tuple = list ()
-
-    for load in psutil.getloadavg ():
-        percent = (load / cpu_count) * 100
-        percent_tuple.append(percent)
-
-    print ("System load per CPU core: " + str (percent_tuple))
-    print ("CPU percent: " + str (psutil.cpu_percent (interval = 1, percpu = True)))
-    vmem = psutil.virtual_memory ()
-    print ("Virtual memory free: " + str (vmem.free / 1000000) + " MB, usage: " + str (vmem.percent) + "%")
-    disk = psutil.disk_usage ('/')
-    print ("Disk free: " + str (disk.free / 1000000) + " MB, usage: " + str (disk.percent) + "%")
-    net_io = psutil.net_io_counters (pernic = True)
-    # running docker container on network host
-    print ("ens33 netif packets sent: " + str (net_io['ens33'].packets_sent) + ", packets received: " + \
-    	str (net_io['ens33'].packets_recv))
-
-    # running docker container natively on docker network
-    # print ("eth0 netif packets sent: " + str (net_io['eth0'].packets_sent) + ", packets received: " + \
-    #    str (net_io['eth0'].packets_recv))
-    # print ("Network interface: " + str (net_io))
-
-
-def networking_monitoring ():
-
-    # Set vars
-    # Remote iperf server IP
+def networking_monitoring():
     remote_site = '172.19.172.150'
-    # How long to run iperf3 test in seconds
     test_duration = 1
 
-    # Set Iperf Client Options
-    # Run 10 parallel streams on port 5201 for duration w/ reverse
+    # TCP Test
     client_tcp = iperf3.Client()
     client_tcp.server_hostname = remote_site
     client_tcp.zerocopy = True
@@ -51,20 +42,16 @@ def networking_monitoring ():
     client_tcp.reverse = True
     client_tcp.port = 5201
     client_tcp.num_streams = 10
-    client_tcp.duration = int (test_duration)
+    client_tcp.duration = int(test_duration)
     client_tcp.bandwidth = 1000000000
-
-    # Run iperf3 test
     result = client_tcp.run()
 
-    # just for debugging and troubleshooting purposes
-    # print ("Result: " + str (result))
-
-    print ("Upload speed: " + str (int (result.sent_MB_s)) + "MBs")
-    print ("Download speed: " + str (int (result.received_MB_s)) + "MBs")
-
+    print(f"Upload speed: {int(result.sent_MB_s)} MB/s")
+    print(f"Download speed: {int(result.received_MB_s)} MB/s")
+    
     del client_tcp
-
+    
+    # UDP Test
     client_udp = iperf3.Client()
     client_udp.server_hostname = remote_site
     client_udp.zerocopy = True
@@ -72,38 +59,18 @@ def networking_monitoring ():
     client_udp.reverse = True
     client_udp.port = 5201
     client_udp.num_streams = 10
-    client_udp.duration = int (test_duration)
+    client_udp.duration = int(test_duration)
     client_udp.bandwidth = 1000000000
     client_udp.protocol = 'udp'
     result = client_udp.run()
 
-    print ("Jitter: " + str (int (result.jitter_ms)) + " ms")
-    print ("Packets: " + str (int (result.packets)))
-    print ("Lost packets: " + str (int (result.lost_packets)))
+    print(f"Jitter: {int(result.jitter_ms)} ms")
+    print(f"Packets: {int(result.packets)}")
+    print(f"Lost packets: {int(result.lost_packets)}")
+    print()
 
+if __name__ == "__main__":
+    while True:
+        server_monitoring()
+        time.sleep(1)  # Wait for 1 second before the next iteration
 
-files = ["edge-mon-specs/avail-iaas.log",\
-    "edge-mon-specs/avail-saas.log",\
-    "edge-mon-specs/rel-defect.log",\
-    "edge-mon-specs/rel-fail.log",\
-    "edge-mon-specs/response.log",\
-    "edge-mon-specs/fail-detector.log",\
-    "edge-mon-specs/pck-throughput.log",\
-    "edge-mon-specs/reqs-throughput.log"]
-
-print (sys.argv)
-for filename in files:
-    
-    with open(filename) as f:
-
-        lines = f.readlines()
-
-        # for docker deployment
-        url = 'http://' + str(sys.argv[2]) + '/edge-vermon'
-        # for local native deployment
-        # url = 'http://localhost:5001/edge-vermon'
-        
-        for l in lines:
-
-            x = requests.get(url, params = { "trace": l })
-            print(x.text)

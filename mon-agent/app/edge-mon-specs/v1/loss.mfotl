@@ -1,7 +1,0 @@
-(cnt <- CNT i;host ONCE[0,30s] rcv(host,ack) AND tp(i))
-AND
-(rcvratio <- AVG ack;host ONCE[0,30s] rcv(host,ack) AND tp(i))
-AND
-cnt >= 5
-AND
-rcvratio >= 0.8

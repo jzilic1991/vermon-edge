@@ -1,2 +1,0 @@
-req2 (avail-saas, rel-fail, response, reqs-throughput) 
-	AND (avail-saas > 0 OR rel-fail > 0 OR response > 0 OR reqs-throughput > 0)

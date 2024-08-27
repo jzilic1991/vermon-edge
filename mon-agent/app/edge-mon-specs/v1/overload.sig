@@ -1,1 +1,0 @@
-comp (host:string, cpu:float, mem:float, stor:float, cores:int, freq:int)

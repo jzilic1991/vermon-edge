@@ -1,3 +1,0 @@
-(beats <- CNT i;host ONCE[0,3] heartbeat(host) AND tp(i))
-AND 
-beats > 0
