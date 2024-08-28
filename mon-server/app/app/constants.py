@@ -33,4 +33,3 @@ class RequirementPattern(Enum):
 class VerificationType(Enum):
     OBJECTIVE = "obj"
     REQUIREMENT = "req"
-

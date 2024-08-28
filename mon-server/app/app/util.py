@@ -36,9 +36,8 @@ class Util (object):
             return [RequirementPattern.REQ3]
 
     def get_req_obj_dict_mapping ():
-        return {RequirementPattern.REQ1.value: [ObjectiveProcName.AVAIL_IAAS.name, \
-            ObjectiveProcName.REL_DEFECT.name, ObjectiveProcName.RESPONSE.name, \
-            ObjectiveProcName.TH_PACKETS.name],\
+        return {RequirementPattern.REQ1.value: [ObjectiveProcName.RESPONSE.name, \
+            ObjectiveProcName.REL_DEFECT.name, ObjectiveProcName.TH_REQS.name],\
           RequirementPattern.REQ2.value: [ObjectiveProcName.AVAIL_SAAS.name,\
             ObjectiveProcName.REL_FAIL.name, ObjectiveProcName.RESPONSE.name, \
             ObjectiveProcName.TH_REQS.name],\
@@ -53,7 +52,8 @@ def construct_event_trace(trace_type, *args):
         traces += f"@{time.time()} {trace_patterns[0].value} ({app_state.host},{args[0]})"
     elif trace_type == ObjectiveProcName.REL_DEFECT:
         traces += f"@{time.time()} {trace_patterns[0].value} ({app_state.host},{args[0]}) {trace_patterns[1].value} ({app_state.host},{args[1]})"
-
+    elif trace_type == RequirementProcName.REQ1:
+        traces += f"@{time.time() {trace_pattern[0].value}} ({args[0]},{args[1]},{args[2]})"
     return traces
 
 def evaluate_event_traces(traces):

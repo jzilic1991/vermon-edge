@@ -1,2 +1,2 @@
-req1 (avail-iaas, rel-defect, response, pck-throughput) 
-	AND (avail-iaas > 0 OR rel-defect > 0 OR response > 0 OR pck-throughput > 0)
+req1 (response, rel-defect, reqs-throughput) 
+	AND (response > 0 OR rel-defect > 0 OR reqs-throughput > 0)

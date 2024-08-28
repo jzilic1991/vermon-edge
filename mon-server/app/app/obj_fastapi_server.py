@@ -146,5 +146,5 @@ async def set_currency(currency_code: str = Form(...)):
     response = await forward_request("currency", "POST", result)
     return response
 
-def start_fastapi_server():
+def start_obj_fastapi_server():
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT")), log_level="info")

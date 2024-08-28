@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: service-paths-config
+  namespace: default
+data:
+  requirements.json: |
+    {"req-1": ["reqs-throughput", "rel-defect"]}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mon-server
+  labels:
+    app: mon-server
+spec:
+  selector:
+    matchLabels:
+      app: mon-server
+  template:
+    metadata:
+      labels:
+        app: mon-server
+    spec:
+      serviceAccountName: mon-server
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+      - name: mon-server-container
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          privileged: false
+          readOnlyRootFilesystem: true
+        image: zikadocker1991/verifier:v3
+        ports:
+        - containerPort: 5001
+        env:
+        - name: SERVER_PORT
+          value: "5001"
+        - name: SERVICE_DOMAIN
+          value: "http://frontend.default.svc.cluster.local:80/"
+        - name: SERVER_TYPE
+          value: "fastapi"
+        args: ["req", "0"]
+        resources:
+          requests:
+            cpu: 200m
+            memory: 180Mi
+          limits:
+            cpu: 300m
+            memory: 300Mi
+        readinessProbe:
+          initialDelaySeconds: 20
+          periodSeconds: 15
+          httpGet:
+            path: /healthz
+            port: 5001
+        livenessProbe:
+          initialDelaySeconds: 20
+          periodSeconds: 15
+          httpGet:
+            path: /healthz
+            port: 5001
+      volumes:
+      - name: config-volume
+        configMap:
+          name: service-paths-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mon-server
+  labels:
+    app: mon-server
+spec:
+  type: ClusterIP
+  selector:
+    app: mon-server
+  ports:
+  - name: http
+    port: 5001
+    targetPort: 5001
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mon-server
+
