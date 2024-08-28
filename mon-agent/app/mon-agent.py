@@ -2,6 +2,8 @@ import psutil
 import iperf3
 import time
 from tabulate import tabulate
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import threading
 
 def server_monitoring():
     cpu_count = psutil.cpu_count()
@@ -69,8 +71,26 @@ def networking_monitoring():
     print(f"Lost packets: {int(result.lost_packets)}")
     print()
 
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/healthz':
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+def run_health_check_server():
+    server_address = ('', 8000)
+    httpd = HTTPServer(server_address, HealthCheckHandler)
+    httpd.serve_forever()
+
 if __name__ == "__main__":
+    health_check_thread = threading.Thread(target=run_health_check_server)
+    health_check_thread.daemon = True
+    health_check_thread.start()
+
     while True:
         server_monitoring()
-        time.sleep(1)  # Wait for 1 second before the next iteration
-
+        time.sleep(1)
