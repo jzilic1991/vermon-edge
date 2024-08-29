@@ -19,11 +19,10 @@ def get_verifiers (ver_type):
 
 def create_verifiers (ProcName):
   verifiers = dict ()
-
   for proc_name in (ProcName):
-    mon = Monpoly (Queue (), Queue (), proc_name)
-    verifiers[mon] = (mon.get_incoming_queue (), mon.get_outgoing_queue ())
-    mon.start ()
+    mon = Monpoly (Queue(), Queue(), proc_name)
+    verifiers[mon] = (mon.get_incoming_queue(), mon.get_outgoing_queue())
+    mon.start()
 
   return verifiers
 

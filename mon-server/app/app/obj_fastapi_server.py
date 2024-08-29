@@ -11,8 +11,8 @@ import json
 import uvicorn
 import asyncio
 from statistics import median
-from util import Util, MetricsDeque, pooling_task, construct_event_trace, evaluate_event_traces, print_metrics, print_spec_violation_stats
-from constants import ObjectiveProcName
+from util import Util, MetricsDeque, pooling_task, construct_event_trace, evaluate_event_traces, print_metrics, print_spec_violation_stats, send_verdict_to_remote_service
+from constants import ObjectiveProcName, REQ_VERIFIER_SERVICE_URL
 from state import app_state
 from asyncio import Lock
 
@@ -60,7 +60,9 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             metrics_dict[service_name].append(response_time)
             traces = list()
             traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, response_time))
-            evaluate_event_traces(traces)
+            verdicts = evaluate_event_traces(traces)
+            asyncio.create_task(send_verdict_to_remote_service(REQ_VERIFIER_SERVICE_URL + "/" + \
+              str(ObjectiveProcName.RESPONSE.value), verdicts[0]))
         else:
             metrics_dict[service_name].failed_requests += 1
             app_state.req_fail_cnt += 1

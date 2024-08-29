@@ -31,26 +31,27 @@ async def handling_verdicts(verdict: dict):
             reqs_dict[req][verdict.keys()[0]] = verdict.values()[0]
             traces.append(construct_event_trace(req, reqs_dict[req]))
         
-    evaluate_event_traces(traces)
-    return None
+    verdicts = evaluate_event_traces(traces)
+    print("Requirement verdicts: " + str(verdicts))
+    return verdicts[0]
 
-@app.post("/response")
-async def response(responsetime: bool = Form(...)):
-    verdict = {ObjectiveProcName.RESPONSE: responsetime}
+@app.post("/" + str(ObjectiveProcName.RESPONSE.value))
+async def response(verdict: bool = Form(...)):
+    verdict = {str(ObjectiveProcName.RESPONSE.value): verdict}
     result = await handling_verdicts(verdict)
-    return None
+    return {"status": "OK"}
 
-@app.post("/throughput")
-async def throughput(throughput: bool = Form(...)):
-    verdict = {ObjectiveProcName.TH_REQS: throughput}
+@app.post("/" + str(ObjectiveProcName.TH_REQS.value))
+async def throughput(verdict: str = Form(...)):
+    verdict = {str(ObjectiveProcName.TH_REQS.value): verdict}
     result = await handling_verdicts(verdict)
-    return None
+    return {"status": "OK"}
 
-@app.post("/defect")
-async def defect(defect: bool = Form(...)):
-    verdict = {ObjectiveProcName.REL_DEFECT: defect}
+@app.post("/" + str(ObjectiveProcName.REL_DEFECT.value))
+async def defect(verdict: str = Form(...)):
+    verdict = {str(ObjectiveProcName.REL_DEFECT.value): verdict}
     result = await handling_verdicts(verdict)
-    return None
+    return {"status": "OK"}
 
 @app.get("/healthz")
 async def health_check():

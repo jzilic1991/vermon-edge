@@ -2,13 +2,14 @@ import time
 import datetime
 import statistics
 import asyncio
+import httpx
 from statistics import median
 from tabulate import tabulate
 from collections import deque
 from enum import Enum
 from state import app_state
 from asyncio import Lock
-from constants import ObjectiveProcName, RequirementProcName, ObjectivePattern, RequirementPattern
+from constants import REQ_VERIFIER_SERVICE_URL, ObjectiveProcName, RequirementProcName, ObjectivePattern, RequirementPattern
 
 class Util (object):
     # return trace pattern based on monpoly verifier process naming
@@ -60,15 +61,26 @@ def construct_event_trace(trace_type, *args):
     return traces
 
 def evaluate_event_traces(traces):
-    print ("Event TRACE: " + str(traces))
+    # print ("Event TRACE: " + str(traces)
+    verdicts = list()
     for trace in traces:
         verdict = app_state.mon_server.evaluate_trace(trace)
+        verdicts.append(verdict)
         if verdict:
-            print(f"Spec violation detected! Trace: {verdict}")
+            # print(f"Spec violation detected! Trace: {verdict}")
             objective = extract_objective_from_trace(trace)
             timestamp = datetime.datetime.now()
             app_state.spec_violations[objective]["timestamps"].append(timestamp)
             app_state.spec_violations[objective]["count"] += 1
+    
+    return verdicts
+
+async def send_verdict_to_remote_service(url: str, verdict: bool):
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post("http://" + url, data = {"verdict": verdict})
+    except Exception as e:
+        print(f"Failed to send verdict: {e}")
 
 def extract_objective_from_trace(trace):
     if ObjectivePattern.RESPONSE_TIME.value in trace:
@@ -137,7 +149,11 @@ async def pooling_task():
         traces = list()
         traces.append(construct_event_trace(ObjectiveProcName.TH_REQS, req_total_residual))
         traces.append(construct_event_trace(ObjectiveProcName.REL_DEFECT, req_fail_total_residual, req_total_residual))
-        evaluate_event_traces(traces)        
+        verdicts = evaluate_event_traces(traces)
+        asyncio.create_task(send_verdict_to_remote_service(REQ_VERIFIER_SERVICE_URL + "/" + \
+            str(ObjectiveProcName.TH_REQS.value), verdicts[0]))
+        asyncio.create_task(send_verdict_to_remote_service(REQ_VERIFIER_SERVICE_URL + "/" + \
+            str(ObjectiveProcName.REL_DEFECT.value), verdicts[1]))
 
 def print_metrics(metrics_dict):
     headers = ["Type", "Name", "# reqs", "Failed reqs", "Avg (ms)", "Min (ms)", "Max (ms)", "Med (ms)", "req/s"]

@@ -1,4 +1,5 @@
 import asyncio
+import re
 from multiprocessing import Process
 from util import Util
 
@@ -32,18 +33,20 @@ class Monpoly (Process):
       str (cls._mon_proc_enum.value) + ".sig", "-formula", "edge-mon-specs/" + \
       str (cls._mon_proc_enum.value) + ".mfotl", stdin = asyncio.subprocess.PIPE, \
       stdout = asyncio.subprocess.PIPE)
-    print (str (cls._mon_proc_enum.value) + " process is started!")
+    print(str(cls._mon_proc_enum.value) + " process is started!")
 
     while True:
-      trace = cls._t_q.get ()
-
+      trace = cls._t_q.get()
       if trace:
-        proc.stdin.write (bytes (trace, 'utf-8'))
+        proc.stdin.write (bytes(trace, 'utf-8'))
         await proc.stdin.drain()
-
         try:
-          line = await asyncio.wait_for (proc.stdout.readline(), 0.1)
-          cls._v_q.put (line.decode ())
-
+          line = await asyncio.wait_for(proc.stdout.readline(), 0.1)
+          pattern = r"\s*@\d+\.\d+\s+\(time point \d+\):.*"
+          match = re.match(pattern, line.decode())
+          if match:
+              cls._v_q.put(True)
+          else:
+              raise ValueError("Monpoly verifier did not return agreed format of evaluation response: " + str(line.decode()))
         except Exception:
-          cls._v_q.put ("")
+          cls._v_q.put(False)

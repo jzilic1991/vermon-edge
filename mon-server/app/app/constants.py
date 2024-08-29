@@ -1,3 +1,4 @@
+import os
 from enum import Enum
 
 class ObjectiveProcName(Enum):
@@ -33,3 +34,5 @@ class RequirementPattern(Enum):
 class VerificationType(Enum):
     OBJECTIVE = "obj"
     REQUIREMENT = "req"
+
+REQ_VERIFIER_SERVICE_URL = os.getenv("REQUIREMENT_VERIFIER_SERVICE")
