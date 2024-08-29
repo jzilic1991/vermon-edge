@@ -53,7 +53,10 @@ def construct_event_trace(trace_type, *args):
     elif trace_type == ObjectiveProcName.REL_DEFECT:
         traces += f"@{time.time()} {trace_patterns[0].value} ({app_state.host},{args[0]}) {trace_patterns[1].value} ({app_state.host},{args[1]})"
     elif trace_type == RequirementProcName.REQ1:
-        traces += f"@{time.time() {trace_pattern[0].value}} ({args[0]},{args[1]},{args[2]})"
+        traces = f"@{time.time()} {trace_pattern[0].value} ("
+        for verdict in args[0].values():
+            traces += f"{verdict},"
+        traces = traces[:-1] + ")"
     return traces
 
 def evaluate_event_traces(traces):
