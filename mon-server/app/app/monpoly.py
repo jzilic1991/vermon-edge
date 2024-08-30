@@ -45,8 +45,8 @@ class Monpoly (Process):
           pattern = r"\s*@\d+\.\d+\s+\(time point \d+\):.*"
           match = re.match(pattern, line.decode())
           if match:
-              cls._v_q.put(True)
+              cls._v_q.put(1)
           else:
               raise ValueError("Monpoly verifier did not return agreed format of evaluation response: " + str(line.decode()))
         except Exception:
-          cls._v_q.put(False)
+          cls._v_q.put(0)

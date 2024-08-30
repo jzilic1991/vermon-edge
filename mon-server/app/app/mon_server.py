@@ -35,7 +35,7 @@ class MonServer:
     self._verifiers = get_verifiers (self._ver_type)
     self._tr_patterns = get_tr_patterns (self._ver_type)
     self._verdicts = self.__get_verdicts ()
-    self._req_to_obj_map = Util.get_req_obj_dict_mapping ()
+    self._req_to_obj_map = Util.get_req_pattern_obj_process_dict ()
     self._socket = socket
 
   def get_ver_type (cls):

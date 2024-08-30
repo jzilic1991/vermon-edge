@@ -36,7 +36,7 @@ class Util (object):
         elif mon_proc_name == RequirementProcName.REQ3:
             return [RequirementPattern.REQ3]
 
-    def get_req_obj_dict_mapping ():
+    def get_req_pattern_obj_process_dict ():
         return {RequirementPattern.REQ1.value: [ObjectiveProcName.RESPONSE.name, \
             ObjectiveProcName.REL_DEFECT.name, ObjectiveProcName.TH_REQS.name],\
           RequirementPattern.REQ2.value: [ObjectiveProcName.AVAIL_SAAS.name,\
@@ -44,24 +44,35 @@ class Util (object):
             ObjectiveProcName.TH_REQS.name],\
           RequirementPattern.REQ3.value: [ObjectiveProcName.FAIL_DETECT.name,\
             ObjectiveProcName.RESPONSE.name, ObjectiveProcName.TH_REQS.name]}
+    
+    def get_req_obj_proc_dict ():
+        return {RequirementProcName.REQ1: [ObjectiveProcName.RESPONSE, \
+            ObjectiveProcName.REL_DEFECT, ObjectiveProcName.TH_REQS],\
+          RequirementProcName.REQ2: [ObjectiveProcName.AVAIL_SAAS,\
+            ObjectiveProcName.REL_FAIL, ObjectiveProcName.RESPONSE, \
+            ObjectiveProcName.TH_REQS],\
+          RequirementProcName.REQ3: [ObjectiveProcName.FAIL_DETECT,\
+            ObjectiveProcName.RESPONSE, ObjectiveProcName.TH_REQS]}
 
 def construct_event_trace(trace_type, *args):
     traces = ""
     trace_patterns = Util.determine_trace_patterns(trace_type)
-
+    
     if trace_type in [ObjectiveProcName.RESPONSE, ObjectiveProcName.TH_REQS]:
         traces += f"@{time.time()} {trace_patterns[0].value} ({app_state.host},{args[0]})"
     elif trace_type == ObjectiveProcName.REL_DEFECT:
         traces += f"@{time.time()} {trace_patterns[0].value} ({app_state.host},{args[0]}) {trace_patterns[1].value} ({app_state.host},{args[1]})"
-    elif trace_type == RequirementProcName.REQ1:
-        traces = f"@{time.time()} {trace_pattern[0].value} ("
+    elif trace_type == RequirementProcName.REQ1 or trace_type == RequirementProcName.REQ2 or \
+      trace_type == RequirementProcName.REQ3:
+        traces = f"@{time.time()} {trace_patterns[0].value} ("
         for verdict in args[0].values():
             traces += f"{verdict},"
         traces = traces[:-1] + ")"
+    
     return traces
 
 def evaluate_event_traces(traces):
-    # print ("Event TRACE: " + str(traces)
+    # print ("Event TRACE: " + str(traces))
     verdicts = list()
     for trace in traces:
         verdict = app_state.mon_server.evaluate_trace(trace)
@@ -76,11 +87,12 @@ def evaluate_event_traces(traces):
     return verdicts
 
 async def send_verdict_to_remote_service(url: str, verdict: bool):
+    data = {"verdict": verdict}
     try:
         async with httpx.AsyncClient() as client:
-            await client.post("http://" + url, data = {"verdict": verdict})
+            await client.post("http://" + url, data = data)
     except Exception as e:
-        print(f"Failed to send verdict: {e}")
+        print(f"Failed to send verdict: {data}, exception: {e}")
 
 def extract_objective_from_trace(trace):
     if ObjectivePattern.RESPONSE_TIME.value in trace:
@@ -89,6 +101,12 @@ def extract_objective_from_trace(trace):
         return ObjectiveProcName.TH_REQS
     elif ObjectivePattern.DEFECT.value in trace:
         return ObjectiveProcName.REL_DEFECT
+    elif RequirementPattern.REQ1.value in trace:
+        return RequirementProcName.REQ1
+    elif RequirementPattern.REQ2.value in trace:
+        return RequirementProcName.REQ2
+    elif RequirementPattern.REQ3.value in trace:
+        return RequirementProcName.REQ3
     return None
 
 def print_spec_violation_stats():
