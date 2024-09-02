@@ -66,7 +66,7 @@ def construct_event_trace(trace_type, *args):
       trace_type == RequirementProcName.REQ3:
         traces = f"@{time.time()} {trace_patterns[0].value} ("
         for verdict in args[0].values():
-            traces += f"{verdict},"
+            traces += f"{verdict['verdict']},"
         traces = traces[:-1] + ")"
     
     return traces

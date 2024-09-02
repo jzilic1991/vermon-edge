@@ -5,7 +5,8 @@ import uvicorn
 import asyncio
 import os
 import sys
-from util import Util, construct_event_trace, evaluate_event_traces
+from datetime import datetime
+from util import Util, construct_event_trace, evaluate_event_traces, print_spec_violation_stats
 from constants import ObjectiveProcName
 from state import app_state
 from asyncio import Lock
@@ -13,11 +14,33 @@ from asyncio import Lock
 verdict_lock = Lock()
 REQUIREMENTS = Util.get_req_obj_proc_dict()
 app = FastAPI()
-reqs_stats = {requirement: 0 for requirement in REQUIREMENTS.keys()}
-reqs_dict = {requirement: {objective: 0 for objective in REQUIREMENTS[requirement]} for requirement in REQUIREMENTS.keys()} 
+verdict_counter = 0
+reqs_dict = {
+    requirement: {
+        "objectives": {objective: {"verdict": 0, "timestamp": "N/A"} for objective in REQUIREMENTS[requirement]},
+        "verdict": 0
+    }
+    for requirement in REQUIREMENTS.keys()
+}
+
+def print_req_status():
+    
+    global reqs_dict
+
+    for req, data in reqs_dict.items():
+        objectives = data["objectives"]
+        obj_names = " | ".join([str(obj).ljust(18) for obj in objectives])
+        obj_values = " | ".join([str(obj_data["verdict"]).rjust(18) for obj_data in objectives.values()])
+        header = "+-----------------+" + "+".join(["-" * 20 for _ in objectives]) + "+--------------------+"
+        print(f"\n{str(req).capitalize()} Requirement Status:")
+        print(header)
+        print(f"| Requirement Name | {obj_names} | Requirement Verdict |")
+        print(header.replace('-', '='))
+        print(f"| {str(req).ljust(15)} | {obj_values} | {str(data['verdict']).rjust(18)} |")
+        print(header)
 
 async def handling_verdicts(verdict: dict):
-    global reqs_dict
+    global reqs_dict, verdict_counter
 
     reqs = list()
     verdict_keys = verdict.keys()
@@ -26,23 +49,28 @@ async def handling_verdicts(verdict: dict):
             if key in objs:
                 reqs.append(req)
     
-    if not reqs: 
-        raise HTTPException(status_code=404, detail="Objective not related to none of requirements")
+    if not reqs:
+        raise HTTPException(status_code=404, detail="Objective not related to any of the requirements")
    
     async with verdict_lock:
         traces = list()
         for req in reqs:
             for key in verdict_keys:
-              reqs_dict[req][key] = verdict[key]
-              traces.append(construct_event_trace(req, reqs_dict[req]))
+                reqs_dict[req]["objectives"][key]["verdict"] = verdict[key]
+                reqs_dict[req]["objectives"][key]["timestamp"] = datetime.now().isoformat()
+                
+            trace = construct_event_trace(req, reqs_dict[req]["objectives"])
+            traces.append(trace)
+            reqs_dict[req]["verdict"] = evaluate_event_traces(traces)[0]
     
-    verdicts = evaluate_event_traces(traces)
+    verdict_counter += 1
+
+    if verdict_counter % 5 == 0:
+        print_spec_violation_stats()
+        print_req_status()
 
 @app.on_event("startup")
 async def startup():
-    app_state.host = 1
-    app_state.request_counter = 0
-    app_state.req_fail_cnt = 0
     app_state.mon_server = MonServer(sys.argv[1], sys.argv[2])
 
 @app.post("/" + str(ObjectiveProcName.RESPONSE.value))

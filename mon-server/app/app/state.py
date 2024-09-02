@@ -1,3 +1,4 @@
+import sys
 from constants import ObjectiveProcName, RequirementProcName
 
 class AppState:
@@ -6,17 +7,22 @@ class AppState:
         self.request_counter = 0
         self.req_fail_cnt = 0
         self.mon_server = None
-        self.last_verdicts = {objective: None for objective in [ObjectiveProcName.RESPONSE, ObjectiveProcName.TH_REQS,\
-          ObjectiveProcName.REL_DEFECT]}
 
-        self.spec_violations = {
-            ObjectiveProcName.RESPONSE: {"timestamps": [], "count": 0},
-            ObjectiveProcName.TH_REQS: {"timestamps": [], "count": 0},
-            ObjectiveProcName.REL_DEFECT: {"timestamps": [], "count": 0},
-            RequirementProcName.REQ1: {"timestamps": [], "count": 0},
-            RequirementProcName.REQ2: {"timestamps": [], "count": 0},
-            RequirementProcName.REQ3: {"timestamps": [], "count": 0}
-        }
+        if sys.argv[1] == "obj":
+            objectives = [ObjectiveProcName.RESPONSE, ObjectiveProcName.TH_REQS, ObjectiveProcName.REL_DEFECT]
+        else:
+            objectives = [RequirementProcName.REQ1, RequirementProcName.REQ2, RequirementProcName.REQ3]
+
+        self.last_verdicts = self.initialize_verdicts(objectives)
+        self.spec_violations = self.initialize_spec_violations(objectives)
+
+    @staticmethod
+    def initialize_verdicts(objectives):
+        return {objective: None for objective in objectives}
+
+    @staticmethod
+    def initialize_spec_violations(objectives):
+        return {objective: {"timestamps": [], "count": 0} for objective in objectives}
 
 app_state = AppState()
 

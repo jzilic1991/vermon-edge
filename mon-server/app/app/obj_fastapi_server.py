@@ -87,9 +87,6 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
 
 @app.on_event("startup")
 async def start_pooling_task():
-    app_state.host = 1
-    app_state.request_counter = 0
-    app_state.req_fail_cnt = 0
     app_state.mon_server = MonServer(sys.argv[1], sys.argv[2])
     asyncio.create_task(pooling_task())
 
