@@ -6,6 +6,8 @@ class AppState:
         self.request_counter = 0
         self.req_fail_cnt = 0
         self.mon_server = None
+        self.last_verdicts = {objective: None for objective in [ObjectiveProcName.RESPONSE, ObjectiveProcName.TH_REQS,\
+          ObjectiveProcName.REL_DEFECT]}
 
         self.spec_violations = {
             ObjectiveProcName.RESPONSE: {"timestamps": [], "count": 0},

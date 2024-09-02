@@ -55,14 +55,21 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     async with metrics_lock:
         app_state.request_counter += 1
         if response.status_code in [200, 302]:
+            # measuring response time
             response_end_time = datetime.datetime.now() 
             response_time = (response_end_time - request_start_time).total_seconds() * 1000
             metrics_dict[service_name].append(response_time)
+            # evaluating event traces
             traces = list()
             traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, response_time))
             verdicts = evaluate_event_traces(traces)
-            asyncio.create_task(send_verdict_to_remote_service(REQ_VERIFIER_SERVICE_URL + "/" + \
-              str(ObjectiveProcName.RESPONSE.value), verdicts[0]))
+            # publishing and updating verdicts
+            current_verdict = verdicts[0]
+            last_verdict = app_state.last_verdicts[ObjectiveProcName.RESPONSE]
+            if current_verdict != last_verdict:
+                # app_state.last_verdicts[ObjectiveProcName.RESPONSE] = current_verdict
+                asyncio.create_task(send_verdict_to_remote_service(ObjectiveProcName.RESPONSE,\
+                  REQ_VERIFIER_SERVICE_URL + "/" + str(ObjectiveProcName.RESPONSE.value), current_verdict))
         else:
             metrics_dict[service_name].failed_requests += 1
             app_state.req_fail_cnt += 1

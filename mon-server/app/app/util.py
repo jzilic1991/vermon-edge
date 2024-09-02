@@ -86,11 +86,27 @@ def evaluate_event_traces(traces):
     
     return verdicts
 
-async def send_verdict_to_remote_service(url: str, verdict: bool):
-    data = {"verdict": verdict}
+async def send_verdict_to_remote_service(objective: ObjectiveProcName, url: str, current_verdict: int):
+    data = {"verdict": current_verdict}
     try:
+        headers = ["Objective", "Current Verdict"]
+        rows = []
+        for objective_key, last_verdict in app_state.last_verdicts.items():
+            if objective_key == objective:
+                if last_verdict != current_verdict:
+                    change_indicator = f" ({last_verdict} -> {current_verdict})"
+                else:
+                    change_indicator = ""
+                rows.append([f"{objective.value}{change_indicator}", current_verdict])
+            else:
+                rows.append([objective_key.value, app_state.last_verdicts[objective_key]])
+
+        print("\nVerdict Change Notification:")
+        print(tabulate(rows, headers=headers, tablefmt="grid"))
+        app_state.last_verdicts[objective] = current_verdict
+        
         async with httpx.AsyncClient() as client:
-            await client.post("http://" + url, data = data)
+            await client.post("http://" + url, data=data)
     except Exception as e:
         print(f"Failed to send verdict: {data}, exception: {e}")
 
@@ -164,14 +180,23 @@ async def pooling_task():
         req_total_prior = app_state.request_counter
         req_fail_total_residual = app_state.req_fail_cnt - req_fail_total_prior
         req_fail_total_prior = app_state.req_fail_cnt
-        traces = list()
-        traces.append(construct_event_trace(ObjectiveProcName.TH_REQS, req_total_residual))
-        traces.append(construct_event_trace(ObjectiveProcName.REL_DEFECT, req_fail_total_residual, req_total_residual))
+        
+        traces = [
+            construct_event_trace(ObjectiveProcName.TH_REQS, req_total_residual),
+            construct_event_trace(ObjectiveProcName.REL_DEFECT, req_fail_total_residual, req_total_residual)
+        ]
         verdicts = evaluate_event_traces(traces)
-        asyncio.create_task(send_verdict_to_remote_service(REQ_VERIFIER_SERVICE_URL + "/" + \
-            str(ObjectiveProcName.TH_REQS.value), verdicts[0]))
-        asyncio.create_task(send_verdict_to_remote_service(REQ_VERIFIER_SERVICE_URL + "/" + \
-            str(ObjectiveProcName.REL_DEFECT.value), verdicts[1]))
+        objectives = [
+            (ObjectiveProcName.TH_REQS, verdicts[0]),
+            (ObjectiveProcName.REL_DEFECT, verdicts[1])
+        ]
+        for objective, current_verdict in objectives:
+            last_verdict = app_state.last_verdicts[objective]
+            
+            if current_verdict != last_verdict:
+                # app_state.last_verdicts[objective] = current_verdict
+                asyncio.create_task(send_verdict_to_remote_service(objective, REQ_VERIFIER_SERVICE_URL + "/" + \
+                    str(objective.value), current_verdict))
 
 def print_metrics(metrics_dict):
     headers = ["Type", "Name", "# reqs", "Failed reqs", "Avg (ms)", "Min (ms)", "Max (ms)", "Med (ms)", "req/s"]
