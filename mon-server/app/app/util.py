@@ -72,14 +72,14 @@ def construct_event_trace(trace_type, *args):
     return traces
 
 def evaluate_event_traces(traces):
-    # print ("Event TRACE: " + str(traces))
+    print ("Event TRACE: " + str(traces))
     verdicts = list()
     for trace in traces:
         verdict = app_state.mon_server.evaluate_trace(trace)
         verdicts.append(verdict)
         if verdict:
-            # print(f"Spec violation detected! Trace: {verdict}")
             objective = extract_objective_from_trace(trace)
+            # print(f"Spec violation detected! Objective: {objective} -> {verdict}")
             timestamp = datetime.datetime.now()
             app_state.spec_violations[objective]["timestamps"].append(timestamp)
             app_state.spec_violations[objective]["count"] += 1

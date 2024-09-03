@@ -24,24 +24,23 @@ reqs_dict = {
 }
 
 def print_req_status():
-    
     global reqs_dict
 
     for req, data in reqs_dict.items():
         objectives = data["objectives"]
-        obj_names = " | ".join([str(obj).ljust(18) for obj in objectives])
+        obj_names = " | ".join([str(obj.value).ljust(18) for obj in objectives])
         obj_values = " | ".join([str(obj_data["verdict"]).rjust(18) for obj_data in objectives.values()])
         header = "+-----------------+" + "+".join(["-" * 20 for _ in objectives]) + "+--------------------+"
-        print(f"\n{str(req).capitalize()} Requirement Status:")
+        print(f"\nRequirement status:")
         print(header)
-        print(f"| Requirement Name | {obj_names} | Requirement Verdict |")
+        print(f"| {'Name'.ljust(15)} | {obj_names} | {'Verdict'.ljust(18)} |")
         print(header.replace('-', '='))
-        print(f"| {str(req).ljust(15)} | {obj_values} | {str(data['verdict']).rjust(18)} |")
+        print(f"| {str(req.value).ljust(15)} | {obj_values} | {str(data['verdict']).rjust(18)} |")
         print(header)
 
 async def handling_verdicts(verdict: dict):
     global reqs_dict, verdict_counter
-
+    # print("Received objective verdict: " + str(verdict))
     reqs = list()
     verdict_keys = verdict.keys()
     for req, objs in REQUIREMENTS.items():
@@ -53,15 +52,15 @@ async def handling_verdicts(verdict: dict):
         raise HTTPException(status_code=404, detail="Objective not related to any of the requirements")
    
     async with verdict_lock:
-        traces = list()
         for req in reqs:
             for key in verdict_keys:
                 reqs_dict[req]["objectives"][key]["verdict"] = verdict[key]
                 reqs_dict[req]["objectives"][key]["timestamp"] = datetime.now().isoformat()
                 
             trace = construct_event_trace(req, reqs_dict[req]["objectives"])
-            traces.append(trace)
-            reqs_dict[req]["verdict"] = evaluate_event_traces(traces)[0]
+            a = evaluate_event_traces([trace])
+            # print(str(req) + " verdict status: " + str(a))
+            reqs_dict[req]["verdict"] = a[0]
     
     verdict_counter += 1
 

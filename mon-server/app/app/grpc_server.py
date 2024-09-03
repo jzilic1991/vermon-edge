@@ -9,8 +9,8 @@ import asyncio
 from mon_server import MonServer
 from state import app_state
 from concurrent import futures
-from util import MetricsDeque, pooling_task, print_spec_violation_stats, print_metrics, construct_event_trace, evaluate_event_traces
-from constants import ObjectiveProcName
+from util import MetricsDeque, send_verdict_to_remote_service, pooling_task, print_spec_violation_stats, print_metrics, construct_event_trace, evaluate_event_traces
+from constants import REQ_VERIFIER_SERVICE_URL, ObjectiveProcName
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logging.info(f"gRPC version: {grpc.__version__}")
@@ -79,8 +79,18 @@ class CartService(demo_pb2_grpc.CartServiceServicer):
         self.app_state.request_counter += 1
         self.metrics_dict["cart_service"].append(response_time)
         traces = [construct_event_trace(ObjectiveProcName.RESPONSE, response_time)]
-        evaluate_event_traces(traces)
-            
+        verdicts = evaluate_event_traces(traces)
+        current_verdict = verdicts[0]
+        last_verdict = self.app_state.last_verdicts[ObjectiveProcName.RESPONSE]
+        if current_verdict != last_verdict:
+            self.app_state.last_verdicts[ObjectiveProcName.RESPONSE] = current_verdict
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(
+                send_verdict_to_remote_service(ObjectiveProcName.RESPONSE,
+                REQ_VERIFIER_SERVICE_URL + "/" + str(ObjectiveProcName.RESPONSE.value), current_verdict)
+            )
+            loop.close()
         # response_size = len(response.SerializeToString())
         # logging.info(f"AddItem response: {response}, size={response_size} bytes")
         if self.app_state.request_counter % 50 == 0:
