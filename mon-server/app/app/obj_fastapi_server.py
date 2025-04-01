@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Form, Request, HTTPException
+from fastapi import FastAPI, Form, Request, HTTPException, Body
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 from mon_server import MonServer
@@ -151,6 +151,15 @@ async def set_currency(currency_code: str = Form(...)):
     # Forward the request to the currency service
     response = await forward_request("currency", "POST", result)
     return response
+
+@app.post("/metrics")
+async def receive_metrics(data: dict = Body(...)):
+    cpu = data.get("cpu")
+    memory = data.get("memory")
+    print(f"[METRICS] CPU: {cpu:.2f}% | Memory: {memory:.2f} MB")
+    # Here you could store it, evaluate it, trigger events, etc.
+    return {"status": "ok"}
+
 
 def start_obj_fastapi_server():
     uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("SERVER_PORT")), log_level="info")
