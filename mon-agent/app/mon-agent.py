@@ -8,15 +8,17 @@ from requests.exceptions import RequestException
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 logging.basicConfig(level=logging.INFO)
+SERVICE_NAME = os.getenv("SERVICE_NAME", "unknown-service")
 
 def get_app_container_pid():
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
         try:
-            if 'cartservice' in ' '.join(proc.info['cmdline']):
+            cmd = ' '.join(proc.info['cmdline'])
+            if SERVICE_NAME.lower() in cmd.lower():
                 return proc.info['pid']
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
-    return 1  # fallback to PID 1
+    return 1  # fallback to PID 1 if nothing found
 
 def collect_metrics():
     pid = get_app_container_pid()
@@ -29,10 +31,14 @@ def send_metrics():
     url = os.getenv("OBJECTIVE_VERIFIER_URL", "http://loadgenerator.default.svc.cluster.local:5001") + "/metrics"
     while True:
         metrics = collect_metrics()
+        enriched = {
+            "service_name": SERVICE_NAME,
+            "metrics": metrics
+        }
         try:
-            response = requests.post(url, json=metrics, timeout=2)  # Add timeout to avoid hanging
+            response = requests.post(url, json=enriched, timeout=2)  # Add timeout to avoid hanging
             response.raise_for_status()
-            logging.info(f"✅ Sent: {metrics}")
+            logging.info(f"✅ Sent: {enriched}")
         except requests.exceptions.ConnectionError as ce:
             logging.warning(f"🔌 Connection error sending metrics: {ce}")
         except requests.exceptions.Timeout:
