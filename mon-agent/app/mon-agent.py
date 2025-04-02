@@ -3,7 +3,11 @@ import psutil
 import requests
 import threading
 import time
+import logging
+from requests.exceptions import RequestException
 from http.server import BaseHTTPRequestHandler, HTTPServer
+
+logging.basicConfig(level=logging.INFO)
 
 def get_app_container_pid():
     for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
@@ -26,11 +30,17 @@ def send_metrics():
     while True:
         metrics = collect_metrics()
         try:
-            requests.post(url, json=metrics)
-            print(f"Sent: {metrics}")
-        except Exception as e:
-            print(f"Failed to send metrics: {e}")
+            response = requests.post(url, json=metrics, timeout=2)  # Add timeout to avoid hanging
+            response.raise_for_status()
+            logging.info(f"✅ Sent: {metrics}")
+        except requests.exceptions.ConnectionError as ce:
+            logging.warning(f"🔌 Connection error sending metrics: {ce}")
+        except requests.exceptions.Timeout:
+            logging.warning("⏱️ Request timed out when sending metrics")
+        except requests.exceptions.RequestException as e:
+            logging.warning(f"❌ Failed to send metrics: {e}")
         time.sleep(1)
+
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
