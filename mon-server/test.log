@@ -1,0 +1,15 @@
+@1  reflect_latency("alice", "item1", 0.12)
+@5  reflect_latency("bob", "item1", 0.18)
+@10 reflect_latency("bob", "item1", 0.19)
+@64 reflect_latency("bob", "item1", 0.6)     # ❗ Just outside 1s window if checked later
+@65 reflect_latency("bob", "item1", 0.1)
+@70 reflect_latency("bob", "item1", 0.65)    # ❗ Max violation
+@71 reflect_latency("bob", "item1", 0.66)    # ❗ Max violation
+@72 reflect_latency("bob", "item1", 0.67)    # ❗ Max violation
+@73 reflect_latency("bob", "item1", 0.68)    # ❗ Max violation
+@74 reflect_latency("bob", "item1", 0.1)
+@75 reflect_latency("bob", "item1", 0.1)
+@76 reflect_latency("bob", "item1", 0.1)
+@77 reflect_latency("bob", "item1", 0.1)
+@100 reflect_latency("alice", "item2", 0.55) # ❗ Max violation
+@101 reflect_latency("alice", "item2", 0.56) # ❗ Max violation

@@ -1,12 +1,13 @@
 (executable
-  (name main)
-  (public_name monpoly)
-  (package monpoly)
-  (libraries str unix dune-build-info))
+ (name main)
+ (public_name monpoly)
+ (package monpoly)
+ (libraries str unix))
 
 (ocamllex formula_lexer log_lexer)
 (ocamlyacc formula_parser log_parser)
 
 (env
-  (release
-    (flags (:standard -noassert))))
+ (release
+  (flags (:standard -noassert))))
+

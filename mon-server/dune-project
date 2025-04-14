@@ -1,8 +1,7 @@
-(lang dune 2.8)
+(lang dune 2.1)
 (name monpoly)
 
 (generate_opam_files true)
-(cram enable)
 
 (license "LGPL-2.1-only WITH OCaml-LGPL-linking-exception")
 (authors
