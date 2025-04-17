@@ -1,0 +1,7 @@
+@1 cart_empty_latency("alice", 0.1)       # ✅ OK
+@2 cart_empty_latency("bob", 0.3)         # ❌ Violation: > 0.2
+@4 cart_empty_latency("charlie", 0.2)     # ✅ OK: equal to threshold
+@6 cart_empty_latency("dave", 0.5)        # ❌ Violation
+@8 cart_empty_latency("eve", 0.19)        # ✅ OK
+@10 cart_empty_latency("frank", 0.21)      # ❌ Violation
+

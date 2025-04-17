@@ -1,0 +1,15 @@
+@10 EmptyCart("alice")
+@10.2 GetCart("alice", 0)           # ✅ Valid: empty cart returned within 1s
+
+@20 EmptyCart("bob")
+@22 GetCart("bob", 0)               # ❌ Violation: too late (after 2s)
+
+@30 EmptyCart("charlie")
+# ❌ Violation: no GetCart at all
+
+@40 EmptyCart("dave")
+@40.1 GetCart("dave", 1)            # ❌ Violation: fast, but cart is not empty
+
+@50 EmptyCart("eve")
+@50.1 GetCart("eve", 0)             # ✅ Valid: correct and timely
+
