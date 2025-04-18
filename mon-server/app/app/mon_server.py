@@ -2,8 +2,25 @@ from multiprocessing import Queue
 from constants import VerificationType, RequirementProcName, ObjectiveProcName, RequirementPattern, ObjectivePattern
 from util import Util
 from monpoly import Monpoly
+from verifier_loader import load_verifiers
+from preprocessor import Preprocessor
 import requests
 import time
+
+
+verifiers = dict ()
+
+def init_verifiers():
+  for verifier_name in load_verifiers():
+      start_verifier(verifier_name)
+
+
+def start_verifier (verifier_name):
+  mon = Monpoly (Queue(), Queue(), verifier_name)
+  verifiers[mon] = (mon.get_incoming_queue(), mon.get_outgoing_queue())
+  mon.start()
+  return verifiers[mon]
+
 
 def get_tr_patterns (ver_type):
   if ver_type == VerificationType.REQUIREMENT.value:
@@ -11,52 +28,52 @@ def get_tr_patterns (ver_type):
   elif ver_type == VerificationType.OBJECTIVE.value:
     return ObjectivePattern
 
-def get_verifiers (ver_type):
-  if ver_type == VerificationType.REQUIREMENT.value:
-    return create_verifiers (RequirementProcName)
-  elif ver_type == VerificationType.OBJECTIVE.value:
-    return create_verifiers (ObjectiveProcName)
-
-def create_verifiers (ProcName):
-  verifiers = dict ()
-  for proc_name in (ProcName):
-    mon = Monpoly (Queue(), Queue(), proc_name)
-    verifiers[mon] = (mon.get_incoming_queue(), mon.get_outgoing_queue())
-    mon.start()
-
-  return verifiers
 
 def get_req_ver_url (ver_type, socket):
   return 'http://' + socket +'/edge-vermon'
 
+
 class MonServer:
   def __init__ (self, ver_type, socket):
     self._ver_type = ver_type
-    self._verifiers = get_verifiers (self._ver_type)
+    self._verifiers = init_verifiers ()
+    self._preprocessor = Preprocessor()
     self._tr_patterns = get_tr_patterns (self._ver_type)
     self._verdicts = self.__get_verdicts ()
     self._req_to_obj_map = Util.get_req_pattern_obj_process_dict ()
     self._socket = socket
 
+
   def get_ver_type (cls):
     return cls._ver_type
 
+
   def evaluate_trace (cls, trace):
     # find trace pattern that fits given trace
-    for tr_pattern in (cls._tr_patterns):
-      if tr_pattern.value in trace:
+    #for tr_pattern in (cls._tr_patterns):
+    #  if tr_pattern.value in trace:
         # iterate verifiers and find which one corresponds to matched trace pattern
-        for mon in cls._verifiers.keys ():
+    #    for mon in cls._verifiers.keys ():
           # iterate trace patterns which are supported by a verifier
-          for tr_target_pattern in mon.get_trace_patterns ():
+    #      for tr_target_pattern in mon.get_trace_patterns ():
             # and compare it with required trace pattern
-            if tr_pattern.name == tr_target_pattern.name:
+    #        if tr_pattern.name == tr_target_pattern.name:
               # route given trace to appropriate verifier via queues
-              cls._verifiers[mon][0].put(trace)
-              v = cls._verifiers[mon][1].get()
+    #          cls._verifiers[mon][0].put(trace)
+    #          v = cls._verifiers[mon][1].get()
               # cls.__send_to_req_ver (v, mon.get_mon_proc_enum ())
               # print("Trace " + trace + ", verdict: " + str(v))
-              return v
+    #          return v
+    v = dict()
+    routed_verifier_names = self._preprocessor(trace)
+    for mon in cls._verifiers.keys():
+      if mon.get_verifer_name() in routed_verifier_names:
+        cls._verifiers[mon][0].put(trace)
+        verdict = cls._verifiers[mon][1].get()
+        v[mon.get_verifier_name()] = verdict
+    
+    return v
+  
 
   def __get_verdicts (cls):
     verdicts = dict ()
@@ -65,6 +82,7 @@ class MonServer:
       verdicts[mon.get_mon_proc_enum().name] = False
 
     return verdicts
+
 
   def __send_to_req_ver (cls, verdict, mon_proc_enum):
     if cls._ver_type == VerificationType.OBJECTIVE.value:
@@ -77,6 +95,7 @@ class MonServer:
           for event in event_traces:
             x = requests.post (get_req_ver_url (cls._ver_type, cls._socket), \
               params = { "trace": event })
+
 
   def __evaluate_verdict_update (cls, verdict, mon_proc_enum):
     # print ("Verdict: " + str (verdict[:len(verdict)-1]) + ", verifier process name: " + \
@@ -91,6 +110,7 @@ class MonServer:
         return mon_proc_name
 
     return ""
+
 
   def __create_event_trace (cls, proc_name):
     events = list ()

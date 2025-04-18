@@ -8,6 +8,7 @@ from tabulate import tabulate
 from collections import deque
 from enum import Enum
 from state import app_state
+from preprocessor import Preprocessor
 from asyncio import Lock
 from constants import REQ_VERIFIER_SERVICE_URL, ObjectiveProcName, RequirementProcName, ObjectivePattern, RequirementPattern
 
@@ -54,6 +55,7 @@ class Util (object):
           RequirementProcName.REQ3: [ObjectiveProcName.FAIL_DETECT,\
             ObjectiveProcName.RESPONSE, ObjectiveProcName.TH_REQS]}
 
+
 def construct_event_trace(trace_type, *args):
     traces = ""
     trace_patterns = Util.determine_trace_patterns(trace_type)
@@ -71,20 +73,20 @@ def construct_event_trace(trace_type, *args):
     
     return traces
 
+
 def evaluate_event_traces(traces):
     print ("Event TRACE: " + str(traces))
-    verdicts = list()
     for trace in traces:
-        verdict = app_state.mon_server.evaluate_trace(trace)
-        verdicts.append(verdict)
-        if verdict:
-            objective = extract_objective_from_trace(trace)
+        verdicts = app_state.mon_server.evaluate_trace(trace)
+        if verdicts:
             # print(f"Spec violation detected! Objective: {objective} -> {verdict}")
-            timestamp = datetime.datetime.now()
-            app_state.spec_violations[objective]["timestamps"].append(timestamp)
-            app_state.spec_violations[objective]["count"] += 1
+            for name, _ in verdicts.items():
+              timestamp = datetime.datetime.now()
+              app_state.spec_violations[name]["timestamps"].append(timestamp)
+              app_state.spec_violations[name]["count"] += 1
     
     return verdicts
+
 
 async def send_verdict_to_remote_service(objective: ObjectiveProcName, url: str, current_verdict: int):
     data = {"verdict": current_verdict}
@@ -109,6 +111,7 @@ async def send_verdict_to_remote_service(objective: ObjectiveProcName, url: str,
             await client.post("http://" + url, data=data)
     except Exception as e:
         print(f"Failed to send verdict: {data}, exception: {e}")
+
 
 def extract_objective_from_trace(trace):
     if ObjectivePattern.RESPONSE_TIME.value in trace:

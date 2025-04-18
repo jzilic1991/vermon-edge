@@ -44,7 +44,7 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     
     request_start_time = datetime.datetime.now() 
     
-    async with httpx.AsyncClient(timeout = 30.0) as client:
+    async with httpx.AsyncClient(timeout = 60.0) as client:
         if method == "POST":
             response = await client.post(url, data = data)
         elif method == "GET":
@@ -56,20 +56,21 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         app_state.request_counter += 1
         if response.status_code in [200, 302]:
             # measuring response time
-            response_end_time = datetime.datetime.now() 
-            response_time = (response_end_time - request_start_time).total_seconds() * 1000
-            metrics_dict[service_name].append(response_time)
+            # response_end_time = datetime.datetime.now() 
+            # response_time = (response_end_time - request_start_time).total_seconds() * 1000
+            # metrics_dict[service_name].append(response_time)
             # evaluating event traces
-            traces = list()
-            traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, response_time))
-            verdicts = evaluate_event_traces(traces)
+            # traces = list()
+            # traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, response_time))
+            print("Response is " + str(response) + ", data type:" + str(type(response)))
+            verdicts = evaluate_event_traces(response)
             # publishing and updating verdicts
-            current_verdict = verdicts[0]
-            last_verdict = app_state.last_verdicts[ObjectiveProcName.RESPONSE]
-            if current_verdict != last_verdict:
+            for name, verdict in verdicts.items():
+              last_verdict = app_state.last_verdicts[name]
+              if verdict != last_verdict:
                 # app_state.last_verdicts[ObjectiveProcName.RESPONSE] = current_verdict
-                asyncio.create_task(send_verdict_to_remote_service(ObjectiveProcName.RESPONSE,\
-                  REQ_VERIFIER_SERVICE_URL + "/" + str(ObjectiveProcName.RESPONSE.value), current_verdict))
+                asyncio.create_task(send_verdict_to_remote_service(name,\
+                  REQ_VERIFIER_SERVICE_URL + "/" + str(name), verdict))
         else:
             metrics_dict[service_name].failed_requests += 1
             app_state.req_fail_cnt += 1
