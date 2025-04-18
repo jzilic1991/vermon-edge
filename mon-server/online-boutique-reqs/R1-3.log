@@ -1,0 +1,11 @@
+@1   CartOp("alice", "AddItem", "ok")
+@2   CartOp("bob", "GetCart", "ok")
+@3   CartOp("charlie", "AddItem", "fail")    # ❌
+@4   CartOp("dave", "RemoveItem", "ok")
+@5   CartOp("eve", "AddItem", "ok")
+@6   CartOp("bob", "GetCart", "fail")        # ❌
+@7   CartOp("alice", "RemoveItem", "ok")
+@8   CartOp("frank", "EmptyCart", "ok")
+@9   CartOp("bob", "AddItem", "fail")        # ❌
+@10  CartOp("charlie", "UpdateQty", "ok")
+

@@ -1,0 +1,3 @@
+(lat <- MAX d; ONCE[0,1s] cart_empty_latency(u, d) AND ts(i))
+AND
+lat > 0.2

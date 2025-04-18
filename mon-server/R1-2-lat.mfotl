@@ -1,5 +1,0 @@
-(lat <- MAX d; ONCE[0,1s] cart_empty_latency(u, d) AND ts(i))
-AND
-lat > 0.2
-
-# EmptyCart(u) AND NOT EVENTUALLY[0,1s] EXISTS empty. (GetCart(u, empty) AND empty < 1)

@@ -1,0 +1,6 @@
+(fail <- CNT u; ONCE[0,60d] CartOp(u, o, "fail"))
+AND
+(total <- CNT u; ONCE[0,60d] CartOp(u, o, _))
+AND
+(fail * 200 >= total)
+
