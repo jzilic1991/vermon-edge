@@ -1,0 +1,6 @@
+@1    CartServiceUsage(0.45, 0.35)   # ✅ Normal
+@5    CartServiceUsage(0.65, 0.69)   # ✅ Near threshold
+@10   CartServiceUsage(0.81, 0.60)   # ❌ CPU violation
+@15   CartServiceUsage(0.75, 0.71)   # ❌ Memory violation
+@20   CartServiceUsage(0.50, 0.50)   # ✅ Normal
+

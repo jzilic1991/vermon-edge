@@ -1,0 +1,2 @@
+CartServiceUsage(c, m) AND (c > 0.8 OR m >= 0.7)
+
