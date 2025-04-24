@@ -17,7 +17,7 @@ from state import app_state
 from asyncio import Lock
 
 metrics_lock = Lock()
-config_path = '/etc/config/service_paths.json'
+config_path = '/etc/service-config/service_paths.json'
 with open(config_path, 'r') as file:
     service_paths = json.load(file)
 

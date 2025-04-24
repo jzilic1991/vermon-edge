@@ -40,6 +40,9 @@ spec:
         - name: SERVER_TYPE
           value: "fastapi"
         args: ["req", "0"]
+        volumeMounts:
+        - name: verifier-config-volume
+          mountPath: /etc/verifier-config
         resources:
           requests:
             cpu: 200m
@@ -59,6 +62,10 @@ spec:
           httpGet:
             path: /healthz
             port: 5001
+      volumes:
+      - name: verifier-config-volume
+        configMap:
+          name: verifier-config
 ---
 apiVersion: v1
 kind: Service

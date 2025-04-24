@@ -19,7 +19,7 @@ class Preprocessor:
             "reflect_latency": ["R1.1_latency"],
             "cart_empty_latency": ["R1.2_empty_cart"],
             "CartOp": ["R1.3_failure_rate"],
-            "CartServiceUsage": ["R1.4_resource_usage"]
+            "CartServiceUsage": ["R1.4_resource_usage"],
             # Primitive direct API calls:
             "AddItem": ["R1.1_latency"],
             "GetCart": ["R1.1_latency"],
