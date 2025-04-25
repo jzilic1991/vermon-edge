@@ -74,18 +74,20 @@ def construct_event_trace(trace_type, *args):
     return traces
 
 
-def evaluate_event_traces(traces):
-    print ("Event TRACE: " + str(traces))
-    for trace in traces:
-        verdicts = app_state.mon_server.evaluate_trace(trace)
-        if verdicts:
-            # print(f"Spec violation detected! Objective: {objective} -> {verdict}")
-            for name, _ in verdicts.items():
-              timestamp = datetime.datetime.now()
-              app_state.spec_violations[name]["timestamps"].append(timestamp)
-              app_state.spec_violations[name]["count"] += 1
-    
-    return verdicts
+def evaluate_event_traces(response):
+    try:
+        # Try parsing JSON first (if response is JSON)
+        response_data = response.json()
+        if isinstance(response_data, dict) and "trace" in response_data:
+            trace = response_data["trace"]
+        else:
+            trace = response.text
+    except Exception:
+        # If not JSON, fallback to raw text
+        trace = response.text
+
+    print(f"Evaluating trace: {trace}")
+    return app_state.mon_server.evaluate_trace(trace)
 
 
 async def send_verdict_to_remote_service(objective: ObjectiveProcName, url: str, current_verdict: int):

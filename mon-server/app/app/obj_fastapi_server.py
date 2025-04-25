@@ -55,15 +55,14 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     async with metrics_lock:
         app_state.request_counter += 1
         if response.status_code in [200, 302]:
-            # measuring response time
-            # response_end_time = datetime.datetime.now() 
-            # response_time = (response_end_time - request_start_time).total_seconds() * 1000
-            # metrics_dict[service_name].append(response_time)
-            # evaluating event traces
-            # traces = list()
-            # traces.append(construct_event_trace(ObjectiveProcName.RESPONSE, response_time))
             print("Response is " + str(response) + ", data type:" + str(type(response)))
-            verdicts = evaluate_event_traces(response)
+        
+            try:
+              event = response.json()  # 🛠️ Try to parse JSON
+              verdicts = evaluate_event_traces(event)
+            except Exception as e:
+              print(f"Could not parse JSON: {e}. Skipping evaluation.")
+              verdicts = {}
             # publishing and updating verdicts
             for name, verdict in verdicts.items():
               last_verdict = app_state.last_verdicts[name]

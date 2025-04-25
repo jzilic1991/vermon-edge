@@ -8,8 +8,6 @@ import requests
 import time
 
 
-
-
 def get_tr_patterns (ver_type):
   if ver_type == VerificationType.REQUIREMENT.value:
     return RequirementPattern
@@ -33,17 +31,31 @@ class MonServer:
     self._socket = socket
   
 
-  def get_ver_type (cls):
-    return cls._ver_type
+  def get_ver_type (self):
+    return self._ver_type
+  
+
+  def evaluate_response(self, response):
+    try:
+        response_data = response.json()
+        if isinstance(response_data, dict) and "trace" in response_data:
+            trace = response_data["trace"]
+        else:
+            trace = response.text
+    except Exception:
+        trace = response.text
+
+    print(f"Evaluating trace inside MonServer: {trace}")
+    return self.evaluate_trace(trace)
 
 
-  def evaluate_trace (cls, trace):
+  def evaluate_trace (self, trace):
     v = dict()
-    routed_verifier_names = self._preprocessor(trace)
-    for mon in cls._verifiers.keys():
+    routed_verifier_names = self._preprocessor.transform_event(trace)
+    for mon in self._verifiers.keys():
       if mon.get_verifer_name() in routed_verifier_names:
-        cls._verifiers[mon][0].put(trace)
-        verdict = cls._verifiers[mon][1].get()
+        self._verifiers[mon][0].put(trace)
+        verdict = self._verifiers[mon][1].get()
         v[mon.get_verifier_name()] = verdict
     
     return v
@@ -60,47 +72,47 @@ class MonServer:
     mon.start()
   
 
-  def __get_verdicts (cls):
+  def __get_verdicts (self):
     verdicts = dict ()
 
-    for mon in cls._verifiers.keys():
+    for mon in self._verifiers.keys():
       verdicts[mon.get_requirement_name()] = False
 
     return verdicts
 
 
-  def __send_to_req_ver (cls, verdict, mon_proc_enum):
-    if cls._ver_type == VerificationType.OBJECTIVE.value:
+  def __send_to_req_ver (self, verdict, mon_proc_enum):
+    if self._ver_type == VerificationType.OBJECTIVE.value:
       # return requirement event trace if verdict of objective has been updated
       # otherwise empty string
-      mon_proc_name = cls.__evaluate_verdict_update (verdict, mon_proc_enum)
+      mon_proc_name = self.__evaluate_verdict_update (verdict, mon_proc_enum)
       if mon_proc_name != "":
-        event_traces = cls.__create_event_trace (mon_proc_name)
+        event_traces = self.__create_event_trace (mon_proc_name)
         if event_traces != []:
           for event in event_traces:
-            x = requests.post (get_req_ver_url (cls._ver_type, cls._socket), \
+            x = requests.post (get_req_ver_url (self._ver_type, self._socket), \
               params = { "trace": event })
 
 
-  def __evaluate_verdict_update (cls, verdict, mon_proc_enum):
+  def __evaluate_verdict_update (self, verdict, mon_proc_enum):
     # print ("Verdict: " + str (verdict[:len(verdict)-1]) + ", verifier process name: " + \
     #   str (mon_proc_enum.name))
-    for mon_proc_name, last_verdict in cls._verdicts.items ():
+    for mon_proc_name, last_verdict in self._verdicts.items ():
       # if mon_proc_name == mon_proc_enum.name:
       #  print ("Last verdict: " + str (last_verdict))
       if (verdict == "" and last_verdict == True) or \
           (verdict != "" and last_verdict == False):
-        cls._verdicts[mon_proc_name] = not (cls._verdicts[mon_proc_name])
+        self._verdicts[mon_proc_name] = not (self._verdicts[mon_proc_name])
 
         return mon_proc_name
 
     return ""
 
 
-  def __create_event_trace (cls, proc_name):
+  def __create_event_trace (self, proc_name):
     events = list ()
 
-    for req_pattern_name, obj_proc_names in cls._req_to_obj_map.items ():
+    for req_pattern_name, obj_proc_names in self._req_to_obj_map.items ():
       event_trace = "@" + str (int (time.time ())) + " "
       # iterate through list of objective process names
       for obj_proc_name in obj_proc_names:
@@ -109,9 +121,9 @@ class MonServer:
           # start creating requirement event trace based on corresponded objective update
           event_trace += req_pattern_name + "("
           # include verdict values from all corresponding objectives of the same requirement
-          for obj_name in cls._req_to_obj_map[req_pattern_name]:
+          for obj_name in self._req_to_obj_map[req_pattern_name]:
             # cast verdict boolean value into integer value before string concatination
-            event_trace += str (int(cls._verdicts[obj_name])) + ", "
+            event_trace += str (int(self._verdicts[obj_name])) + ", "
 
           event_trace = event_trace[:len(event_trace)-2] + ")"
           events.append (event_trace)

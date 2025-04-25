@@ -30,7 +30,7 @@ class Preprocessor:
     def emit_event(self, timepoint, event_str):
         return f"@{timepoint}\n{event_str}"
 
-    def process_complex_event(self, event):
+    def process_event(self, event):
         if event["type"] == "AddItem":
             self.additem_cache[(event["user"], event["item"])] = event["timestamp"]
 
@@ -56,7 +56,8 @@ class Preprocessor:
             return ("CartServiceUsage", self.emit_event(event["timestamp"], f'CartServiceUsage({event["cpu"]}, {event["mem"]})'))
 
         return None
-      
+    
+
     def transform_event(self, event):
         result = self.process_event(event)
         routed_verifiers = set()
