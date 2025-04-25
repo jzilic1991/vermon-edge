@@ -10,10 +10,9 @@ class Monpoly (Process):
     self._t_q = t_q
     self._v_q = v_q
     self._requirement_to_verify = requirement_to_verify
-    self._trace_patterns = Util.determine_trace_patterns (self._mon_proc_enum)
 
   
-  def get_verifier_name (cls):
+  def get_requirement_name (cls):
     return cls._requirement_to_verify
 
 
@@ -25,15 +24,6 @@ class Monpoly (Process):
     return cls._v_q
 
 
-  def get_trace_patterns (cls):
-    return cls._trace_patterns
-
-
-  def get_mon_proc_enum (cls):
-    # returing enum data type i.e. tuple (name, value)
-    return cls._mon_proc_enum
-
-
   def run (cls):
     asyncio.run (cls.__processing ())
 
@@ -43,7 +33,7 @@ class Monpoly (Process):
       str (cls._requirement_to_verify) + ".sig", "-formula", "online-boutique-reqs/" + \
       str (cls._requirement_to_verify) + ".mfotl", stdin = asyncio.subprocess.PIPE, \
       stdout = asyncio.subprocess.PIPE)
-    print(str(cls._mon_proc_enum.value) + " process is started!")
+    print(str(cls._requirement_to_verify) + " process is started!")
 
     while True:
       trace = cls._t_q.get()

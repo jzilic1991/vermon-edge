@@ -8,18 +8,6 @@ import requests
 import time
 
 
-verifiers = dict ()
-
-def init_verifiers():
-  for verifier_name in load_verifiers():
-      start_verifier(verifier_name)
-
-
-def start_verifier (verifier_name):
-  mon = Monpoly (Queue(), Queue(), verifier_name)
-  verifiers[mon] = (mon.get_incoming_queue(), mon.get_outgoing_queue())
-  mon.start()
-  return verifiers[mon]
 
 
 def get_tr_patterns (ver_type):
@@ -36,34 +24,20 @@ def get_req_ver_url (ver_type, socket):
 class MonServer:
   def __init__ (self, ver_type, socket):
     self._ver_type = ver_type
-    self._verifiers = init_verifiers ()
+    self._verifiers = dict()
+    self.__init_verifiers()
     self._preprocessor = Preprocessor()
     self._tr_patterns = get_tr_patterns (self._ver_type)
     self._verdicts = self.__get_verdicts ()
     self._req_to_obj_map = Util.get_req_pattern_obj_process_dict ()
     self._socket = socket
-
+  
 
   def get_ver_type (cls):
     return cls._ver_type
 
 
   def evaluate_trace (cls, trace):
-    # find trace pattern that fits given trace
-    #for tr_pattern in (cls._tr_patterns):
-    #  if tr_pattern.value in trace:
-        # iterate verifiers and find which one corresponds to matched trace pattern
-    #    for mon in cls._verifiers.keys ():
-          # iterate trace patterns which are supported by a verifier
-    #      for tr_target_pattern in mon.get_trace_patterns ():
-            # and compare it with required trace pattern
-    #        if tr_pattern.name == tr_target_pattern.name:
-              # route given trace to appropriate verifier via queues
-    #          cls._verifiers[mon][0].put(trace)
-    #          v = cls._verifiers[mon][1].get()
-              # cls.__send_to_req_ver (v, mon.get_mon_proc_enum ())
-              # print("Trace " + trace + ", verdict: " + str(v))
-    #          return v
     v = dict()
     routed_verifier_names = self._preprocessor(trace)
     for mon in cls._verifiers.keys():
@@ -75,11 +49,22 @@ class MonServer:
     return v
   
 
+  def __init_verifiers(self):
+    for verifier_name in load_verifiers():
+      self.__start_verifier(verifier_name)
+
+
+  def __start_verifier (self, verifier_name):
+    mon = Monpoly (Queue(), Queue(), verifier_name)
+    self._verifiers[mon] = (mon.get_incoming_queue(), mon.get_outgoing_queue())
+    mon.start()
+  
+
   def __get_verdicts (cls):
     verdicts = dict ()
 
-    for mon in cls._verifiers.keys ():
-      verdicts[mon.get_mon_proc_enum().name] = False
+    for mon in cls._verifiers.keys():
+      verdicts[mon.get_requirement_name()] = False
 
     return verdicts
 

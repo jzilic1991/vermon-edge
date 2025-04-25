@@ -30,6 +30,7 @@ spec:
           privileged: false
           readOnlyRootFilesystem: true
         image: zikadocker1991/verifier:v4
+        imagePullPolicy: Always  
         ports:
         - containerPort: 5001
         env:
