@@ -54,33 +54,42 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         else:
             raise HTTPException(status_code=405, detail="Method not allowed")
 
+    try:
+        response_content = response.json()
+    except ValueError:
+        response_content = response.text
+
     async with metrics_lock:
         app_state.request_counter += 1
+
+        # Only if successful request, create and verify event
         if response.status_code in [200, 302]:
-            request_end_time = datetime.datetime.now()
-            response_time_ms = (request_end_time - request_start_time).total_seconds() * 1000  # in ms
-            metrics_dict[service_name].append(response_time_ms)
-
-            # Infer event based on HTTP method and service
             event_type = infer_event_from_http(method, "/" + service_name)
-            if event_type:
-                event = {
-                    "type": event_type,
-                    "user": data.get("user", "user1") if data else "user1",  # 🛠 Pull real user if possible
-                    "timestamp": time.time()
-                }
-                # If adding item (AddItem) — capture product_id as item
-                if data and "product_id" in data:
-                    event["item"] = data["product_id"]
-            
-                routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)  # works on dict
-                formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)  # creates @timestamp\nPredicate(...)
-                verdicts = {}
-                if formatted_event:
-                  verdicts = app_state.mon_server.evaluate_trace(formatted_event)  # uses formatted string
+            user = "user1"  # fallback
 
+            if method == "POST" and data:
+                user = data.get("user", "user1")
+            elif method == "GET" and hasattr(app_state, "request") and hasattr(app_state.request, "query_params"):
+                user = app_state.request.query_params.get("user", "user1")
+
+            event = {
+                "type": event_type,
+                "user": user,
+                "timestamp": time.time(),
+            }
+            if method == "POST" and data and "product_id" in data:
+                event["item"] = data["product_id"]
+
+            print(f"[DEBUG] Emitting event: {event}")
+
+            routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
+            formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)
+
+            if formatted_event:
+                print(f"[DEBUG] Evaluating trace: {formatted_event}")
+                verdicts = app_state.mon_server.evaluate_trace(formatted_event)
                 print(f"[DEBUG] Verdicts: {verdicts}")
-        
+
         else:
             metrics_dict[service_name].failed_requests += 1
             app_state.req_fail_cnt += 1
@@ -88,11 +97,6 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         if app_state.request_counter % 50 == 0:
             print_metrics(metrics_dict)
             print_spec_violation_stats()
-
-    try:
-        response_content = response.json()
-    except ValueError:
-        response_content = response.text
 
     return JSONResponse(content=response_content, status_code=response.status_code)
 
