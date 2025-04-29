@@ -173,35 +173,7 @@ class MetricsDeque:
         return self.start_time
 
 async def pooling_task():
-    req_total_prior = 0
-    req_fail_total_prior = 0
-    req_total_residual = 0
-    req_fail_total_residual = 0
-
-    while True:
-        await asyncio.sleep(10)
-        print("Pooling...")
-        req_total_residual = app_state.request_counter - req_total_prior
-        req_total_prior = app_state.request_counter
-        req_fail_total_residual = app_state.req_fail_cnt - req_fail_total_prior
-        req_fail_total_prior = app_state.req_fail_cnt
-        
-        traces = [
-            construct_event_trace(ObjectiveProcName.TH_REQS, req_total_residual),
-            construct_event_trace(ObjectiveProcName.REL_DEFECT, req_fail_total_residual, req_total_residual)
-        ]
-        verdicts = evaluate_event_traces(traces)
-        objectives = [
-            (ObjectiveProcName.TH_REQS, verdicts[0]),
-            (ObjectiveProcName.REL_DEFECT, verdicts[1])
-        ]
-        for objective, current_verdict in objectives:
-            last_verdict = app_state.last_verdicts[objective]
-            
-            if current_verdict != last_verdict:
-                # app_state.last_verdicts[objective] = current_verdict
-                asyncio.create_task(send_verdict_to_remote_service(objective, REQ_VERIFIER_SERVICE_URL + "/" + \
-                    str(objective.value), current_verdict))
+    pass
 
 def print_metrics(metrics_dict):
     headers = ["Type", "Name", "# reqs", "Failed reqs", "Avg (ms)", "Min (ms)", "Max (ms)", "Med (ms)", "req/s"]

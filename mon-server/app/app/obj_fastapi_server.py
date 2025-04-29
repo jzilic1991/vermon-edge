@@ -15,6 +15,8 @@ from util import Util, MetricsDeque, pooling_task, construct_event_trace, evalua
 from constants import ObjectiveProcName, REQ_VERIFIER_SERVICE_URL
 from state import app_state
 from asyncio import Lock
+from http_to_event_mapper import infer_event_from_http
+import time  # Add this if not imported yet
 
 metrics_lock = Lock()
 config_path = '/etc/service-config/service_paths.json'
@@ -34,56 +36,55 @@ metrics_dict = {service: MetricsDeque(maxlen = 10000) for service in BACKEND_SER
 
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None):
     global metrics_dict
-    
+
     if service_name not in BACKEND_SERVICES:
         raise HTTPException(status_code=404, detail="Service not found")
 
     url = BACKEND_SERVICES[service_name]
     if path_params:
         url = url.rstrip('/') + '/' + '/'.join(path_params.values())
-    
-    request_start_time = datetime.datetime.now() 
-    
-    async with httpx.AsyncClient(timeout = 60.0) as client:
+
+    request_start_time = datetime.datetime.now()
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
         if method == "POST":
-            response = await client.post(url, data = data)
+            response = await client.post(url, data=data)
         elif method == "GET":
             response = await client.get(url)
         else:
             raise HTTPException(status_code=405, detail="Method not allowed")
-        
+
     async with metrics_lock:
         app_state.request_counter += 1
         if response.status_code in [200, 302]:
-            print("Response is " + str(response) + ", data type:" + str(type(response)))
-        
-            try:
-              event = response.json()  # 🛠️ Try to parse JSON
-              verdicts = evaluate_event_traces(event)
-            except Exception as e:
-              print(f"Could not parse JSON: {e}. Skipping evaluation.")
-              verdicts = {}
-            # publishing and updating verdicts
-            for name, verdict in verdicts.items():
-              last_verdict = app_state.last_verdicts[name]
-              if verdict != last_verdict:
-                # app_state.last_verdicts[ObjectiveProcName.RESPONSE] = current_verdict
-                asyncio.create_task(send_verdict_to_remote_service(name,\
-                  REQ_VERIFIER_SERVICE_URL + "/" + str(name), verdict))
+            # Infer event based on HTTP method and service
+            event_type = infer_event_from_http(method, "/" + service_name)
+            if event_type:
+                event = {
+                    "type": event_type,
+                    "user": data.get("user", "user1") if data else "user1",  # 🛠 Pull real user if possible
+                    "timestamp": time.time()
+                }
+                # If adding item (AddItem) — capture product_id as item
+                if data and "product_id" in data:
+                    event["item"] = data["product_id"]
+
+                routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
         else:
             metrics_dict[service_name].failed_requests += 1
             app_state.req_fail_cnt += 1
-        
+
         if app_state.request_counter % 50 == 0:
             print_metrics(metrics_dict)
             print_spec_violation_stats()
 
     try:
-        response_content = response.json()  
+        response_content = response.json()
     except ValueError:
-        response_content = response.text  
+        response_content = response.text
 
-    return JSONResponse(content = response_content, status_code = response.status_code)
+    return JSONResponse(content=response_content, status_code=response.status_code)
+
 
 @app.on_event("startup")
 async def start_pooling_task():
