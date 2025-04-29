@@ -130,16 +130,28 @@ def extract_objective_from_trace(trace):
         return RequirementProcName.REQ3
     return None
 
+
 def print_spec_violation_stats():
+    if not hasattr(app_state, "mon_server") or not hasattr(app_state.mon_server, "verifier_stats"):
+        print("No verifier statistics available.")
+        return
+
     print("\nSpecification Violation Statistics:")
-    print("+-----------------+--------------------+------------------+")
-    print("| Objective       |   Violations Count | Last Timestamp   |")
-    print("+=================+====================+==================+")
+    print("+-------------------------------+----------------------+----------------------+")
 
+    # Header row
+    print("| {:<30} | {:^20} | {:^20} |".format("Objective", "Violations Count", "Last Timestamp"))
+    print("+===============================+======================+======================+")
+
+    # Data rows
     for name, stats in app_state.mon_server.verifier_stats.items():
-        print(f"| {name:<15} | {stats['violated']:>18} | {stats['last_update']:<16} |")
+        print("| {:<30} | {:^20} | {:^20} |".format(
+            name,
+            stats["violated"],
+            stats["last_update"]
+        ))
 
-    print("+-----------------+--------------------+------------------+")
+    print("+-------------------------------+----------------------+----------------------+\n")
 
 
 class MetricsDeque:

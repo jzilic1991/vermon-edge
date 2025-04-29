@@ -3,13 +3,13 @@ import time
 class Preprocessor:
     _instance = None
 
-    def __new__(cls, output_path="vermon_stream.log"):
+    def __new__(cls, output_path="/tmp/vermon_stream.log"):
         if cls._instance is None:
             cls._instance = super(Preprocessor, cls).__new__(cls)
             cls._instance.__initialized = False
         return cls._instance
 
-    def __init__(self, output_path="vermon_stream.log"):
+    def __init__(self, output_path="/tmp/vermon_stream.log"):
         if self.__initialized:
             return
         self.__initialized = True
@@ -77,8 +77,7 @@ class Preprocessor:
                 self.cache_additem(user, item_id, timestamp)
                 event_str = self.emit_event(timestamp, f'AddItem("{user}", "{item_id}")')
                 routed_verifiers.add("R1.1_latency")
-                with open(self.output_path, "a") as f:
-                    f.write(event_str + "\n")
+                # [NO file write]
             else:
                 print(f"Warning: AddItem missing item_id! Event: {event}")
 
@@ -86,8 +85,6 @@ class Preprocessor:
             cart_contents = event.get("cart", [])
             events = self.process_get_cart(user, cart_contents, timestamp)
             for evt_type, evt_str in events:
-                with open(self.output_path, "a") as f:
-                    f.write(evt_str + "\n")
                 routed_verifiers.update(self.event_to_verifier.get(evt_type, []))
 
         elif event["type"] == "EmptyCart":
@@ -98,49 +95,49 @@ class Preprocessor:
                 d = round(timestamp - self.emptycart_cache[user], 3)
                 event_str = self.emit_event(timestamp, f'cart_empty_latency("{user}", {d})')
                 routed_verifiers.add("R1.2_empty_cart")
-                with open(self.output_path, "a") as f:
-                    f.write(event_str + "\n")
 
         elif event["type"] == "CartOp":
             label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"
             event_str = self.emit_event(timestamp, f'CartOp("{user}", "{event["op"]}", "{label}")')
             routed_verifiers.add("R1.3_failure_rate")
-            with open(self.output_path, "a") as f:
-                f.write(event_str + "\n")
 
         elif event["type"] == "Metrics":
             cpu, mem = event.get("cpu", 0.0), event.get("mem", 0.0)
             event_str = self.emit_event(timestamp, f'CartServiceUsage({cpu}, {mem})')
             routed_verifiers.add("R1.4_resource_usage")
-            with open(self.output_path, "a") as f:
-                f.write(event_str + "\n")
 
-        # Route raw event type if mapped
+        # Also route based on raw primitive event type if mapped
         if event["type"] in self.event_to_verifier:
             routed_verifiers.update(self.event_to_verifier[event["type"]])
 
         return list(routed_verifiers)
 
     def format_for_monpoly(self, event):
-        timestamp = int(event["timestamp"])
+        timestamp = event.get("timestamp", time.time())
         user = event.get("user", "unknown")
+
         if event["type"] == "AddItem":
-            item = event.get("item") or event.get("product_id", "unknown")
-            return f"@{timestamp}\nAddItem(\"{user}\", \"{item}\")\n"
+            item_id = event.get("item") or event.get("product_id", "unknown")
+            return self.emit_event(timestamp, f'AddItem("{user}", "{item_id}")')
+
         elif event["type"] == "GetCart":
-            return f"@{timestamp}\nGetCart(\"{user}\")\n"
+            return self.emit_event(timestamp, f'GetCart("{user}")')
+
         elif event["type"] == "EmptyCart":
-            return f"@{timestamp}\nEmptyCart(\"{user}\")\n"
+            return self.emit_event(timestamp, f'EmptyCart("{user}")')
+
         elif event["type"] == "GetCartEmpty":
-            return f"@{timestamp}\nGetCartEmpty(\"{user}\")\n"
+            return self.emit_event(timestamp, f'GetCartEmpty("{user}")')
+
         elif event["type"] == "CartOp":
             label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"
-            op = event.get("op", "unknown")
-            return f"@{timestamp}\nCartOp(\"{user}\", \"{op}\", \"{label}\")\n"
+            return self.emit_event(timestamp, f'CartOp("{user}", "{event["op"]}", "{label}")')
+
         elif event["type"] == "Metrics":
             cpu, mem = event.get("cpu", 0.0), event.get("mem", 0.0)
-            return f"@{timestamp}\nCartServiceUsage({cpu}, {mem})\n"
+            return self.emit_event(timestamp, f'CartServiceUsage({cpu}, {mem})')
+
         else:
-            print(f"[ERROR] Cannot format event for Monpoly: {event}")
+            print(f"Warning: Unknown event type for formatting: {event}")
             return None
 

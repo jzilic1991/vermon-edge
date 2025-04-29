@@ -75,6 +75,7 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             
                 routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)  # works on dict
                 formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)  # creates @timestamp\nPredicate(...)
+                verdicts = {}
                 if formatted_event:
                   verdicts = app_state.mon_server.evaluate_trace(formatted_event)  # uses formatted string
 
