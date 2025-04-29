@@ -14,9 +14,9 @@ class Preprocessor:
             return
         self.__initialized = True
         self.output_path = output_path
-        self.additem_cache = {}        # (user, item) -> (timestamp)
+        self.additem_cache = {}        # (user, item) -> timestamp
         self.emptycart_cache = {}      # user -> timestamp
-        self.cache_ttl_seconds = 300   # 5 minutes TTL for cache entries
+        self.cache_ttl_seconds = 300   # 5 minutes TTL
 
         self.event_to_verifier = {
             "reflect_latency": ["R1.1_latency"],
@@ -30,7 +30,7 @@ class Preprocessor:
         }
 
     def emit_event(self, timepoint, event_str):
-        return f"@{timepoint}\n{event_str}"
+        return f"@{int(timepoint)}\n{event_str}"
 
     def cache_additem(self, user_id, item_id, timestamp):
         self.additem_cache[(user_id, item_id)] = timestamp
@@ -68,37 +68,79 @@ class Preprocessor:
 
     def transform_event(self, event):
         routed_verifiers = set()
-
-        # Before anything, clean old cache entries
-        self.clean_caches(event.get("timestamp", time.time()))
+        timestamp = event["timestamp"]
+        user = event.get("user", "unknown")
 
         if event["type"] == "AddItem":
             item_id = event.get("item") or event.get("product_id")
             if item_id:
-                self.cache_additem(event["user"], item_id, event["timestamp"])
+                self.cache_additem(user, item_id, timestamp)
+                event_str = self.emit_event(timestamp, f'AddItem("{user}", "{item_id}")')
+                routed_verifiers.add("R1.1_latency")
+                with open(self.output_path, "a") as f:
+                    f.write(event_str + "\n")
             else:
                 print(f"Warning: AddItem missing item_id! Event: {event}")
 
-        elif event["type"] == "EmptyCart":
-            if "user" in event:
-                self.cache_emptycart(event["user"], event["timestamp"])
-            else:
-                print(f"Warning: EmptyCart missing user {event}")
-
         elif event["type"] == "GetCart":
-            if "user" in event:
-                cart_contents = event.get("cart", [])
-                events = self.process_get_cart(event["user"], cart_contents, event["timestamp"])
-                for evt_type, evt_str in events:
-                    with open(self.output_path, "a") as f:
-                        f.write(evt_str + "\n")
-                    routed_verifiers.update(self.event_to_verifier.get(evt_type, []))
-            else:
-                print(f"Warning: GetCart missing user {event}")
+            cart_contents = event.get("cart", [])
+            events = self.process_get_cart(user, cart_contents, timestamp)
+            for evt_type, evt_str in events:
+                with open(self.output_path, "a") as f:
+                    f.write(evt_str + "\n")
+                routed_verifiers.update(self.event_to_verifier.get(evt_type, []))
 
-        # Always check direct mapping too
+        elif event["type"] == "EmptyCart":
+            self.cache_emptycart(user, timestamp)
+
+        elif event["type"] == "GetCartEmpty":
+            if user in self.emptycart_cache and event.get("cart", 0) == 0:
+                d = round(timestamp - self.emptycart_cache[user], 3)
+                event_str = self.emit_event(timestamp, f'cart_empty_latency("{user}", {d})')
+                routed_verifiers.add("R1.2_empty_cart")
+                with open(self.output_path, "a") as f:
+                    f.write(event_str + "\n")
+
+        elif event["type"] == "CartOp":
+            label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"
+            event_str = self.emit_event(timestamp, f'CartOp("{user}", "{event["op"]}", "{label}")')
+            routed_verifiers.add("R1.3_failure_rate")
+            with open(self.output_path, "a") as f:
+                f.write(event_str + "\n")
+
+        elif event["type"] == "Metrics":
+            cpu, mem = event.get("cpu", 0.0), event.get("mem", 0.0)
+            event_str = self.emit_event(timestamp, f'CartServiceUsage({cpu}, {mem})')
+            routed_verifiers.add("R1.4_resource_usage")
+            with open(self.output_path, "a") as f:
+                f.write(event_str + "\n")
+
+        # Route raw event type if mapped
         if event["type"] in self.event_to_verifier:
             routed_verifiers.update(self.event_to_verifier[event["type"]])
 
         return list(routed_verifiers)
+
+    def format_for_monpoly(self, event):
+        timestamp = int(event["timestamp"])
+        user = event.get("user", "unknown")
+        if event["type"] == "AddItem":
+            item = event.get("item") or event.get("product_id", "unknown")
+            return f"@{timestamp}\nAddItem(\"{user}\", \"{item}\")\n"
+        elif event["type"] == "GetCart":
+            return f"@{timestamp}\nGetCart(\"{user}\")\n"
+        elif event["type"] == "EmptyCart":
+            return f"@{timestamp}\nEmptyCart(\"{user}\")\n"
+        elif event["type"] == "GetCartEmpty":
+            return f"@{timestamp}\nGetCartEmpty(\"{user}\")\n"
+        elif event["type"] == "CartOp":
+            label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"
+            op = event.get("op", "unknown")
+            return f"@{timestamp}\nCartOp(\"{user}\", \"{op}\", \"{label}\")\n"
+        elif event["type"] == "Metrics":
+            cpu, mem = event.get("cpu", 0.0), event.get("mem", 0.0)
+            return f"@{timestamp}\nCartServiceUsage({cpu}, {mem})\n"
+        else:
+            print(f"[ERROR] Cannot format event for Monpoly: {event}")
+            return None
 

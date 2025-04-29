@@ -131,19 +131,16 @@ def extract_objective_from_trace(trace):
     return None
 
 def print_spec_violation_stats():
-    headers = ["Objective", "Violations Count", "Last Timestamp"]
-    rows = []
-    
-    for objective, stats in app_state.spec_violations.items():
-        last_timestamp = stats["timestamps"][-1] if stats["timestamps"] else "N/A"
-        rows.append([
-            objective.value,
-            stats["count"],
-            last_timestamp,
-        ])
-    
     print("\nSpecification Violation Statistics:")
-    print(tabulate(rows, headers=headers, tablefmt="grid"))
+    print("+-----------------+--------------------+------------------+")
+    print("| Objective       |   Violations Count | Last Timestamp   |")
+    print("+=================+====================+==================+")
+
+    for name, stats in app_state.mon_server.verifier_stats.items():
+        print(f"| {name:<15} | {stats['violated']:>18} | {stats['last_update']:<16} |")
+
+    print("+-----------------+--------------------+------------------+")
+
 
 class MetricsDeque:
     def __init__(self, maxlen = 1000):

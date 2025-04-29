@@ -57,6 +57,10 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     async with metrics_lock:
         app_state.request_counter += 1
         if response.status_code in [200, 302]:
+            request_end_time = datetime.datetime.now()
+            response_time_ms = (request_end_time - request_start_time).total_seconds() * 1000  # in ms
+            metrics_dict[service_name].append(response_time_ms)
+
             # Infer event based on HTTP method and service
             event_type = infer_event_from_http(method, "/" + service_name)
             if event_type:
@@ -68,8 +72,14 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
                 # If adding item (AddItem) — capture product_id as item
                 if data and "product_id" in data:
                     event["item"] = data["product_id"]
+            
+                routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)  # works on dict
+                formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)  # creates @timestamp\nPredicate(...)
+                if formatted_event:
+                  verdicts = app_state.mon_server.evaluate_trace(formatted_event)  # uses formatted string
 
-                routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
+                print(f"[DEBUG] Verdicts: {verdicts}")
+        
         else:
             metrics_dict[service_name].failed_requests += 1
             app_state.req_fail_cnt += 1

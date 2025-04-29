@@ -23,14 +23,15 @@ class MonServer:
   def __init__ (self, ver_type, socket):
     self._ver_type = ver_type
     self._verifiers = dict()
+    self.verifier_stats = dict()
     self.__init_verifiers()
     self._preprocessor = Preprocessor()
     self._tr_patterns = get_tr_patterns (self._ver_type)
     self._verdicts = self.__get_verdicts ()
     self._req_to_obj_map = Util.get_req_pattern_obj_process_dict ()
     self._socket = socket
-  
 
+  
   def get_ver_type (self):
     return self._ver_type
   
@@ -49,17 +50,25 @@ class MonServer:
     return self.evaluate_trace(trace)
 
 
-  def evaluate_trace (self, trace):
+  def evaluate_trace(self, formatted_trace):
     v = dict()
-    routed_verifier_names = self._preprocessor.transform_event(trace)
+    print(f"[DEBUG] Evaluating trace: {formatted_trace.strip()}")
+
     for mon in self._verifiers.keys():
-      if mon.get_verifer_name() in routed_verifier_names:
-        self._verifiers[mon][0].put(trace)
+        mon_name = mon.get_verifier_name()
+        self._verifiers[mon][0].put(formatted_trace)
         verdict = self._verifiers[mon][1].get()
-        v[mon.get_verifier_name()] = verdict
-    
+
+        if verdict == 1:
+            v[mon_name] = "violated"
+            self.verifier_stats[mon_name]["violated"] += 1
+        else:
+            v[mon_name] = "satisfied"
+
+        self.verifier_stats[mon_name]["last_update"] = time.strftime("%Y-%m-%d %H:%M:%S")
+
     return v
-  
+
 
   def __init_verifiers(self):
     for verifier_name in load_verifiers():
@@ -70,13 +79,18 @@ class MonServer:
     mon = Monpoly (Queue(), Queue(), verifier_name)
     self._verifiers[mon] = (mon.get_incoming_queue(), mon.get_outgoing_queue())
     mon.start()
+
+    self.verifier_stats[verifier_name] = {
+        "violated": 0,
+        "last_update": "N/A"
+    }
   
 
   def __get_verdicts (self):
     verdicts = dict ()
 
     for mon in self._verifiers.keys():
-      verdicts[mon.get_requirement_name()] = False
+      verdicts[mon.get_verifier_name()] = False
 
     return verdicts
 
