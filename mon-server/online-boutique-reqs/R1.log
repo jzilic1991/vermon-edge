@@ -1,53 +1,15 @@
+@1
+R1_status(1, 1, 1, 0)     # ❌ R1.4 violated
+
+@5
+R1_status(1, 1, 0, 0)     # ❌ R1.3 and R1.4 violated
+
 @10
-R1_1(1)
-R1_2(1)
-R1_3(1)
-R1_4(1)
+R1_status(1, 1, 1, 1)     # ✅ Full R1 satisfied
 
 @20
-R1_1(0)   # ❌ Violation
+R1_status(1, 0, 1, 1)     # ❌ R1.2 violated
 
 @30
-R1_2(0)   # ❌ Violation
-
-@40
-R1_3(1)
-R1_4(0)   # ❌ Violation
-
-@50
-R1_1(1)
-R1_2(1)
-R1_3(1)
-R1_4(1)   # ✅ All good again
-
-
-@100
-R1_1(1)
-R1_2(1)
-R1_3(1)
-R1_4(1)
-
-@200
-R1_1(0)      # ❌ would not satisfy v1 > 0
-R1_2(1)
-R1_3(1)
-R1_4(1)
-
-@300
-R1_1(1)
-R1_2(1)
-R1_3(1)
-# ❌ missing R1_4
-
-@400
-R1_1(1)
-R1_2(1)
-R1_3(1)
-R1_4(1)      # ✅ again fully satisfies
-
-@500
-R1_1(1)
-R1_2(0)      # ❌ this one fails because v2 ≤ 0
-R1_3(1)
-R1_4(1)
+R1_status(1, 1, 1, 1)     # ✅ Full R1 satisfied again
 
