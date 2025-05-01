@@ -78,8 +78,6 @@ class MonServer:
             # String already, assume correctly formatted
             routed_verifiers = list(self._verifiers.keys())  # Send to all if unsure
 
-        print(f"[DEBUG] Evaluating trace: {trace.strip()}")
-
         for mon in self._verifiers.keys():
             verifier_name = mon.get_verifier_name()
             if verifier_name in routed_verifiers:
@@ -98,7 +96,6 @@ class MonServer:
 
                 self.verifier_stats[verifier_name]["last_update"] = time.strftime("%Y-%m-%d %H:%M:%S")
 
-        print(f"[DEBUG] Verdicts: {v}")
         return v
 
     def __send_to_req_ver(self, verdict, mon_proc_enum):

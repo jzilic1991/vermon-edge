@@ -34,7 +34,7 @@ BACKEND_SERVICES = service_paths
 app = FastAPI()
 metrics_dict = {service: MetricsDeque(maxlen = 10000) for service in BACKEND_SERVICES}
 
-async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None):
+async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None, request: Request = None):
     global metrics_dict
 
     if service_name not in BACKEND_SERVICES:
@@ -46,13 +46,15 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
 
     request_start_time = datetime.datetime.now()
 
+    params = dict(request.query_params) if request else None
+
     async with httpx.AsyncClient(timeout=60.0) as client:
-        if method == "POST":
-            response = await client.post(url, data=data)
-        elif method == "GET":
-            response = await client.get(url)
-        else:
-            raise HTTPException(status_code=405, detail="Method not allowed")
+      if method == "POST":
+        response = await client.post(url, data=data, params=params)
+      elif method == "GET":
+        response = await client.get(url, params=params)
+      else:
+        raise HTTPException(status_code=405, detail="Method not allowed")
 
     try:
         response_content = response.json()
@@ -65,12 +67,20 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         # Only if successful request, create and verify event
         if response.status_code in [200, 302]:
             event_type = infer_event_from_http(method, "/" + service_name)
-            user = "user1"  # fallback
+            user = "user1"  # default
+            item = None
+            
+            if request:
+                # First try from query param (GET or POST with ?user=...)
+                user = request.query_params.get("user", user)
 
+                # Then fall back to POST body (form-encoded)
+                if method == "POST" and data:
+                  user = data.get("user", user)
+
+            # For POST, extract product_id (not user, since it's in query param not form)
             if method == "POST" and data:
-                user = data.get("user", "user1")
-            elif method == "GET" and hasattr(app_state, "request") and hasattr(app_state.request, "query_params"):
-                user = app_state.request.query_params.get("user", "user1")
+                item = data.get("product_id")
 
             event = {
                 "type": event_type,
@@ -81,10 +91,8 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
                 event["item"] = data["product_id"]
 
             print(f"[DEBUG] Emitting event: {event}")
-
             routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
             formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)
-
             if formatted_event:
                 print(f"[DEBUG] Evaluating trace: {formatted_event}")
                 verdicts = app_state.mon_server.evaluate_trace(formatted_event)
@@ -107,29 +115,35 @@ async def start_pooling_task():
     asyncio.create_task(pooling_task())
 
 @app.get("/")
-async def get_index():
-    result = await forward_request("index", "GET")
+async def get_index(request: Request):
+    result = await forward_request("index", "GET", request=request)
     return result
 
 @app.get("/cart")
-async def get_cart():
+async def get_cart(request: Request):
     # Forward the request to the cart service
-    result = await forward_request("cart", "GET")
+    result = await forward_request("cart", "GET", request=request)
     return result
 
 @app.post("/cart")
-async def add_to_cart(product_id: str = Form(...), quantity: int = Form (...)):
-    result = {"product_id": product_id, "quantity": quantity}
-    response = await forward_request("cart", "POST", result)
+async def add_to_cart(
+    request: Request,
+    product_id: str = Form(...),
+    quantity: int = Form(...),
+    user: str = Form(...)  # ✅ ADD THIS LINE
+):
+    result = {"product_id": product_id, "quantity": quantity, "user": user}  # ✅ INCLUDE user
+    response = await forward_request("cart", "POST", result, request=request)
     return response
 
 @app.post("/cart/empty")
-async def empty_cart():
-    result = await forward_request("empty", "POST")
+async def empty_cart(request: Request):
+    result = await forward_request("empty", "POST", request=request)
     return result
 
 @app.post("/cart/checkout")
-async def checkout(email: str = Form(...), \
+async def checkout(request: Request, \
+                   email: str = Form(...), \
                    street_address: str = Form(...), \
                    zip_code: str = Form(...), \
                    city: str = Form(...), \
@@ -146,26 +160,26 @@ async def checkout(email: str = Form(...), \
       "credit_card_cvv": credit_card_cvv}
 
     # Forward the request to the cart service
-    response = await forward_request("checkout", "POST", result)
+    response = await forward_request("checkout", "POST", result, request=request)
     return response
 
 @app.get("/logout")
-async def logout():
+async def logout(request: Request):
     # Forward the request to the cart service (or another service if needed)
-    result = await forward_request("logout", "GET")
+    result = await forward_request("logout", "GET", request=request)
     return result
 
 @app.get("/product/{product_id}")
-async def get_product(product_id: str):
+async def get_product(request: Request, product_id: str):
     # Forward the request to the product catalog service
-    response = await forward_request("product", "GET", path_params = {"product_id": product_id})
+    response = await forward_request("product", "GET", path_params = {"product_id": product_id}, request=request)
     return response
 
 @app.post("/setCurrency")
-async def set_currency(currency_code: str = Form(...)):
+async def set_currency(request: Request, currency_code: str = Form(...)):
     result = {"currency_code": currency_code} 
     # Forward the request to the currency service
-    response = await forward_request("currency", "POST", result)
+    response = await forward_request("currency", "POST", result, request=request)
     return response
 
 @app.post("/metrics")

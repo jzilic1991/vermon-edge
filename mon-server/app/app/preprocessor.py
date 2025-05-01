@@ -138,6 +138,6 @@ class Preprocessor:
             return self.emit_event(timestamp, f'CartServiceUsage({cpu}, {mem})')
 
         else:
-            print(f"Warning: Unknown event type for formatting: {event}")
+            # print(f"Warning: Unknown event type for formatting: {event}")
             return None
 
