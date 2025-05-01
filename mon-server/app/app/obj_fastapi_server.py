@@ -45,9 +45,7 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         url = url.rstrip('/') + '/' + '/'.join(path_params.values())
 
     request_start_time = datetime.datetime.now()
-
     params = dict(request.query_params) if request else None
-
     async with httpx.AsyncClient(timeout=60.0) as client:
       if method == "POST":
         response = await client.post(url, data=data, params=params)
@@ -66,6 +64,9 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
 
         # Only if successful request, create and verify event
         if response.status_code in [200, 302]:
+            # ✅ Inserted HTTP metrics tracking
+            elapsed_ms = (datetime.datetime.now() - request_start_time).total_seconds() * 1000
+            metrics_dict[service_name].dq.append(elapsed_ms)
             event_type = infer_event_from_http(method, "/" + service_name)
             user = "user1"  # default
             item = None
@@ -73,7 +74,6 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             if request:
                 # First try from query param (GET or POST with ?user=...)
                 user = request.query_params.get("user", user)
-
                 # Then fall back to POST body (form-encoded)
                 if method == "POST" and data:
                   user = data.get("user", user)
