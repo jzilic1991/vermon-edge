@@ -141,3 +141,28 @@ class Preprocessor:
             # print(f"Warning: Unknown event type for formatting: {event}")
             return None
 
+    def cache_r1_verdict(self, user, subreq, verdict):
+        if not hasattr(self, "r1_verdict_cache"):
+            self.r1_verdict_cache = {}
+        if user not in self.r1_verdict_cache:
+            self.r1_verdict_cache[user] = {}
+        self.r1_verdict_cache[user][subreq] = verdict
+   
+    def synthesize_r1_event(self, user, timestamp=None):
+        if user not in self.r1_verdict_cache:
+            return None
+
+        subreqs = self.r1_verdict_cache[user]
+        required = ["R1.1_latency", "R1.2_empty_cart", "R1.3_failure_rate", "R1.4_resource_usage"]
+
+        if not all(r in subreqs for r in required):
+            return None
+
+        if timestamp is None:
+            timestamp = time.time()
+
+        # 0 = OK, 1 = Violation (already set by upstream logic)
+        verdicts = [1 if subreqs[r] == "Violation" else 0 for r in required]
+        event = f'R1("{user}", {verdicts[0]}, {verdicts[1]}, {verdicts[2]}, {verdicts[3]})'
+        return self.emit_event(timestamp, event)
+

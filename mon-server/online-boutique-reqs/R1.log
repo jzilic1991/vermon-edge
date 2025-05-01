@@ -1,15 +1,12 @@
 @1
-R1_status(1, 1, 1, 0)     # ❌ R1.4 violated
+R1("user_all_ok", 0, 0, 0, 0)
 
-@5
-R1_status(1, 1, 0, 0)     # ❌ R1.3 and R1.4 violated
+@2
+R1("user_one_violation", 1, 0, 0, 0)
 
-@10
-R1_status(1, 1, 1, 1)     # ✅ Full R1 satisfied
+@3
+R1("user_multiple_violations", 1, 1, 1, 1)
 
-@20
-R1_status(1, 0, 1, 1)     # ❌ R1.2 violated
-
-@30
-R1_status(1, 1, 1, 1)     # ✅ Full R1 satisfied again
+@4
+R1("user_last_violation", 0, 0, 0, 1)
 

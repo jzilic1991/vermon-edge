@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: r1-only-verifier-config
+  namespace: default
+data:
+  verifiers_config.json: |
+    {
+      "verifiers": ["R1"]
+    }
+
