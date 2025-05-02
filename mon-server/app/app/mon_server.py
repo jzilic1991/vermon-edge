@@ -6,7 +6,8 @@ from monpoly import Monpoly
 from verifier_loader import load_verifiers
 from preprocessor import Preprocessor
 import requests
-
+from collections import deque
+from debug_utils import DebugBuffer
 
 def get_tr_patterns(ver_type):
     if ver_type == VerificationType.REQUIREMENT.value:
@@ -31,6 +32,10 @@ class MonServer:
         self.verifier_stats = dict()
 
         self.__init_verifiers()
+        self.verifier_buffers = dict()
+        self.buffer_print_threshold = 10
+        self.buffer_max_size = 100
+        self.buffer_counters = dict()
 
     def __init_verifiers(self):
         for verifier_name in load_verifiers():
@@ -82,6 +87,21 @@ class MonServer:
             verifier_name = mon.get_verifier_name()
             if verifier_name in routed_verifiers:
                 mon.get_incoming_queue().put(trace)
+                # Initialize buffer if not exists
+                if verifier_name not in self.verifier_buffers:
+                    self.verifier_buffers[verifier_name] = deque(maxlen=self.buffer_max_size)
+                    self.buffer_counters[verifier_name] = 0
+
+                # Track and print
+                self.verifier_buffers[verifier_name].append(trace)
+                self.buffer_counters[verifier_name] += 1
+
+                if self.buffer_counters[verifier_name] >= self.buffer_print_threshold:
+                    print(f"\n[Buffer: {verifier_name}] Last {len(self.verifier_buffers[verifier_name])} traces:")
+                    for i, t in enumerate(self.verifier_buffers[verifier_name]):
+                        print(f"  [{i}] {t}")
+                        self.buffer_counters[verifier_name] = 0
+
                 try:
                     verdict = mon.get_outgoing_queue().get(timeout=1.0)
                 except Exception:

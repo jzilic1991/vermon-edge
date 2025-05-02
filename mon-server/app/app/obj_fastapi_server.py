@@ -17,7 +17,9 @@ from state import app_state
 from asyncio import Lock
 from http_to_event_mapper import infer_event_from_http
 import time  # Add this if not imported yet
+from debug_utils import DebugBuffer  # if split
 
+http_debug_buffer = DebugBuffer("HTTP Events")
 metrics_lock = Lock()
 config_path = '/etc/service-config/service_paths.json'
 with open(config_path, 'r') as file:
@@ -53,12 +55,14 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         response = await client.get(url, params=params)
       else:
         raise HTTPException(status_code=405, detail="Method not allowed")
-
+    
     try:
         response_content = response.json()
     except ValueError:
         response_content = response.text
 
+    if request.url.path == "/cart" and method.upper() == "GET":
+      print(f"[DEBUG] Raw backend GET /cart response: {response_content}")
     async with metrics_lock:
         app_state.request_counter += 1
 
@@ -90,10 +94,10 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             if method == "POST" and data and "product_id" in data:
                 event["item"] = data["product_id"]
 
-            print(f"[DEBUG] Emitting event: {event}")
             routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
             formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)
             if formatted_event:
+                # print(f"[DEBUG] Emitting event: {event}")
                 print(f"[DEBUG] Evaluating trace: {formatted_event}")
                 verdicts = app_state.mon_server.evaluate_trace(formatted_event)
                 print(f"[DEBUG] Verdicts: {verdicts}")

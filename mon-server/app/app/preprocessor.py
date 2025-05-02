@@ -1,4 +1,7 @@
 import time
+from debug_utils import DebugBuffer
+from collections import deque
+synthetic_buffer = DebugBuffer("Synthetic Events")
 
 class Preprocessor:
     _instance = None
@@ -17,23 +20,38 @@ class Preprocessor:
         self.additem_cache = {}        # (user, item) -> timestamp
         self.emptycart_cache = {}      # user -> timestamp
         self.cache_ttl_seconds = 300   # 5 minutes TTL
-
         self.event_to_verifier = {
-            "reflect_latency": ["R1.1_latency"],
-            "cart_empty_latency": ["R1.2_empty_cart"],
-            "CartOp": ["R1.3_failure_rate"],
-            "CartServiceUsage": ["R1.4_resource_usage"],
-            "AddItem": ["R1.1_latency"],
-            "GetCart": ["R1.1_latency"],
-            "EmptyCart": ["R1.2_empty_cart"],
-            "GetCartEmpty": ["R1.2_empty_cart"]
+          "reflect_latency": ["R1.1_latency"],
+          "cart_empty_latency": ["R1.2_empty_cart_latency"],
+          "EmptyCart": ["R1.2_empty_cart_latency", "R1.2_empty_cart_sequence"],
+          "GetCart": ["R1.2_empty_cart_latency", "R1.2_empty_cart_sequence"],
+          "CartOp": ["R1.3_failure_rate"],
+          "CartServiceUsage": ["R1.4_resource_usage"]
         }
+        self.fifo_buffers = {name: [] for name in self.event_to_verifier.keys()}
+        self.fifo_limit = 100
+        self.fifo_print_every = 10
+        self.event_counter = {name: 0 for name in self.event_to_verifier.keys()}
 
-    def emit_event(self, timepoint, event_str):
-        return f"@{int(timepoint)}\n{event_str}"
+    def emit_event(self, timestamp: int, event_str: str) -> str:
+        # Determine which verifiers this event should be sent to
+        event_name = event_str.split("(")[0]
+        verifiers = self.event_to_verifier.get(event_name, [])
 
-    def cache_additem(self, user_id, item_id, timestamp):
-        self.additem_cache[(user_id, item_id)] = timestamp
+        for verifier in verifiers:
+            if verifier not in self.fifo_buffers:
+                self.fifo_buffers[verifier] = deque(maxlen=100)
+                self.event_counter[verifier] = 0
+
+            self.fifo_buffers[verifier].append(f"{timestamp} {event_str}")
+            self.event_counter[verifier] += 1
+
+            if self.event_counter[verifier] % 10 == 0:
+                print(f"\n[Preprocessor] Last {len(self.fifo_buffers[verifier])} entries for verifier '{verifier}':")
+                for entry in list(self.fifo_buffers[verifier]):
+                    print(entry)
+
+        return f"{timestamp} {event_str}"
 
     def cache_emptycart(self, user_id, timestamp):
         self.emptycart_cache[user_id] = timestamp
@@ -54,30 +72,40 @@ class Preprocessor:
 
     def process_get_cart(self, user_id, cart_contents, timestamp):
         events = []
-
+        print('[DEBUG] Processing GetCart for synthetic events')
+        print(f"[DEBUG] GetCart contents: {cart_contents}")
+        print(f"[DEBUG] AddItem cache keys: {list(self.additem_cache.keys())}")
         if user_id in self.emptycart_cache and len(cart_contents) == 0:
             d = round(timestamp - self.emptycart_cache[user_id], 3)
-            events.append(("cart_empty_latency", self.emit_event(timestamp, f'cart_empty_latency("{user_id}", {d})')))
-
+            evt_type = "cart_empty_latency"
+            evt_str = self.emit_event(timestamp, f'cart_empty_latency("{user_id}", {d})')
+            events.append((evt_type, evt_str))
+            print(f'[DEBUG] Emitting synthetic: {evt_type} -> {evt_str}')
+        
         for item_id in cart_contents:
             if (user_id, item_id) in self.additem_cache:
                 d = round(timestamp - self.additem_cache[(user_id, item_id)], 3)
-                events.append(("reflect_latency", self.emit_event(timestamp, f'reflect_latency("{user_id}", "{item_id}", {d})')))
-
+                evt_type = "reflect_latency"
+                evt_str = self.emit_event(timestamp, f'reflect_latency("{user_id}", "{item_id}", {d})')
+                events.append((evt_type, evt_str))
+                print(f'[DEBUG] Emitting synthetic: {evt_type} -> {evt_str}')
+        
         return events
 
     def transform_event(self, event):
         routed_verifiers = set()
         timestamp = event["timestamp"]
         user = event.get("user", "unknown")
+        # print('[DEBUG] Transforming event:', event)
 
         if event["type"] == "AddItem":
             item_id = event.get("item") or event.get("product_id")
             if item_id:
-                self.cache_additem(user, item_id, timestamp)
+                self.additem_cache[(user, item_id)] = timestamp
+                print(f"[DEBUG] Cached AddItem: ({user}, {item_id}) at {timestamp}")
                 event_str = self.emit_event(timestamp, f'AddItem("{user}", "{item_id}")')
                 routed_verifiers.add("R1.1_latency")
-                # [NO file write]
+                print(f'[DEBUG] Routing to verifier: {routed_verifiers}')
             else:
                 print(f"Warning: AddItem missing item_id! Event: {event}")
 
@@ -86,6 +114,8 @@ class Preprocessor:
             events = self.process_get_cart(user, cart_contents, timestamp)
             for evt_type, evt_str in events:
                 routed_verifiers.update(self.event_to_verifier.get(evt_type, []))
+                print(f"[DEBUG] Routed synthetic event '{evt_type}' to: {self.event_to_verifier.get(evt_type, [])}")
+                print(f"[DEBUG] Emitting synthetic event to MonPoly: {evt_str}")
 
         elif event["type"] == "EmptyCart":
             self.cache_emptycart(user, timestamp)
@@ -95,21 +125,25 @@ class Preprocessor:
                 d = round(timestamp - self.emptycart_cache[user], 3)
                 event_str = self.emit_event(timestamp, f'cart_empty_latency("{user}", {d})')
                 routed_verifiers.add("R1.2_empty_cart")
+                print(f'[DEBUG] Routing to verifier: {routed_verifiers}')
 
         elif event["type"] == "CartOp":
             label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"
             event_str = self.emit_event(timestamp, f'CartOp("{user}", "{event["op"]}", "{label}")')
             routed_verifiers.add("R1.3_failure_rate")
+            print(f'[DEBUG] Routing to verifier: {routed_verifiers}')
 
         elif event["type"] == "Metrics":
             cpu, mem = event.get("cpu", 0.0), event.get("mem", 0.0)
             event_str = self.emit_event(timestamp, f'CartServiceUsage({cpu}, {mem})')
             routed_verifiers.add("R1.4_resource_usage")
+            print(f'[DEBUG] Routing to verifier: {routed_verifiers}')
 
         # Also route based on raw primitive event type if mapped
         if event["type"] in self.event_to_verifier:
             routed_verifiers.update(self.event_to_verifier[event["type"]])
-
+            print(f"[DEBUG] Routed raw event type '{event['type']}' to: {self.event_to_verifier.get(event['type'], [])}")
+        
         return list(routed_verifiers)
 
     def format_for_monpoly(self, event):
