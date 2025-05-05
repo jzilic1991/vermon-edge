@@ -39,6 +39,10 @@ session_to_user = {}
 
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None, request: Request = None):
     global metrics_dict
+    # --- Debug incoming request ---
+    #print(f"[DEBUG] {method} request to service='{service_name}'")
+    #print(f"[DEBUG] Query params: {request.query_params if request else 'None'}")
+    #print(f"[DEBUG] Data payload: {data}")
 
     if service_name not in BACKEND_SERVICES:
         raise HTTPException(status_code=404, detail="Service not found")
@@ -109,14 +113,14 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
 
             # ✅ Emit synthetic event for monitoring
             synthetic_event = f"{event_type}(user_id='{user}', session_id='{user_to_session.get(user)}', item='{item}')"
-            print(f"[DEBUG] Emitting synthetic event: {synthetic_event}")
+            # print(f"[DEBUG] Emitting synthetic event: {synthetic_event}")
 
             routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
             formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)
             if formatted_event:
-                print(f"[DEBUG] Evaluating trace: {formatted_event}")
+                #print(f"[DEBUG] Evaluating trace: {formatted_event}")
                 verdicts = app_state.mon_server.evaluate_trace(formatted_event)
-                print(f"[DEBUG] Verdicts: {verdicts}")
+                #print(f"[DEBUG] Verdicts: {verdicts}")
         else:
             metrics_dict[service_name].failed_requests += 1
             app_state.req_fail_cnt += 1
@@ -151,8 +155,8 @@ async def add_to_cart(
     return await forward_request("cart", "POST", data, request=request)
 
 @app.post("/cart/empty")
-async def empty_cart(request: Request):
-    return await forward_request("empty", "POST", request=request)
+async def empty_cart(request: Request, user: str = Form(...)):
+    return await forward_request("empty", "POST", {"user": user}, request=request)
 
 @app.post("/cart/checkout")
 async def checkout(request: Request,
@@ -165,14 +169,16 @@ async def checkout(request: Request,
                    credit_card_number: str = Form(...),
                    credit_card_expiration_month: int = Form(...),
                    credit_card_expiration_year: int = Form(...),
-                   credit_card_cvv: str = Form(...)):
+                   credit_card_cvv: str = Form(...),
+                   user: str = Form(...)):
     data = {
         "email": email, "street_address": street_address, "zip_code": zip_code,
         "city": city, "state": state, "country": country,
         "credit_card_number": credit_card_number,
         "credit_card_expiration_month": credit_card_expiration_month,
         "credit_card_expiration_year": credit_card_expiration_year,
-        "credit_card_cvv": credit_card_cvv
+        "credit_card_cvv": credit_card_cvv,
+        "user": user
     }
     return await forward_request("checkout", "POST", data, request=request)
 
@@ -185,8 +191,8 @@ async def get_product(request: Request, product_id: str):
     return await forward_request("product", "GET", path_params={"product_id": product_id}, request=request)
 
 @app.post("/setCurrency")
-async def set_currency(request: Request, currency_code: str = Form(...)):
-    return await forward_request("currency", "POST", {"currency_code": currency_code}, request=request)
+async def set_currency(request: Request, currency_code: str = Form(...), user: str = Form(...)):
+    return await forward_request("currency", "POST", {"currency_code": currency_code, "user": user}, request=request)
 
 @app.post("/metrics")
 async def receive_metrics(data: dict = Body(...)):
