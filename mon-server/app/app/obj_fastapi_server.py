@@ -17,7 +17,6 @@ from state import app_state
 from asyncio import Lock
 from http_to_event_mapper import infer_event_from_http
 from debug_utils import DebugBuffer
-from urllib.parse import urljoin  # add this at the top if not already
 
 http_debug_buffer = DebugBuffer("HTTP Events")
 metrics_lock = Lock()
@@ -35,6 +34,42 @@ metrics_dict = {service: MetricsDeque(maxlen=10000) for service in BACKEND_SERVI
 
 user_to_session = {}
 session_to_user = {}
+session_timestamps = {}
+
+SESSION_TIMEOUT_SECONDS = 60
+
+def cleanup_expired_sessions():
+    now = datetime.datetime.now()
+    expired_users = []
+    for user, timestamps in session_timestamps.items():
+        last_seen_str = timestamps.get("last_seen")
+        if last_seen_str:
+            last_seen = datetime.datetime.strptime(last_seen_str, "%Y-%m-%d %H:%M:%S")
+            if (now - last_seen).total_seconds() > SESSION_TIMEOUT_SECONDS:
+                expired_users.append(user)
+
+    for user in expired_users:
+        session = user_to_session.pop(user, None)
+        if session:
+            session_to_user.pop(session, None)
+        session_timestamps.pop(user, None)
+        print(f"[CLEANUP] Removed expired session for user '{user}'")
+
+    if expired_users:
+        print_user_session_table()
+
+def print_user_session_table():
+    cleanup_expired_sessions()
+    if not user_to_session:
+        print("[INFO] No active sessions.")
+        return
+    print("\n=== User to Session Mapping ===")
+    print("{:>5} | {:<36} | {:<36} | {:<20} | {:<20}".format("#", "User ID", "Session ID", "Created At", "Last Seen"))
+    print("-" * 130)
+    for i, (user, session) in enumerate(user_to_session.items(), 1):
+        created_at = session_timestamps.get(user, {}).get("created", "-")
+        updated_at = session_timestamps.get(user, {}).get("last_seen", "-")
+        print("{:>5} | {:<36} | {:<36} | {:<20} | {:<20}".format(i, user, session, created_at, updated_at))
 
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None, request: Request = None):
     global metrics_dict
@@ -80,12 +115,12 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
 
         response = await client.send(req)
 
-        # Handle redirect manually to preserve cookies
-        if response.status_code == 302 and "location" in response.headers:
-            redirect_path = response.headers["location"]
-            redirect_url = urljoin(str(req.url), redirect_path)
-            print(f"\n➡️ Handling redirect to: {redirect_url}")
-            response = await client.get(redirect_url, cookies=cookies, headers=headers)
+        if response.status_code == 302:
+            redirect_path = response.headers.get("location")
+            if redirect_path:
+                from urllib.parse import urljoin
+                redirect_url = urljoin(str(req.url), redirect_path)
+                response = await client.get(redirect_url, cookies=cookies, headers=headers)
 
         print("\n📥 INCOMING HTTP RESPONSE")
         print(f"  Status: {response.status_code}")
@@ -97,18 +132,23 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         except ValueError:
             response_content = response.text
 
-        if user not in user_to_session:
-            set_cookie = response.headers.get("set-cookie")
-            if set_cookie:
-                for part in set_cookie.split(";"):
-                    if "shop_session-id=" in part:
-                        session_id = part.split("shop_session-id=")[-1].strip()
-                        user_to_session[user] = session_id
-                        session_to_user[session_id] = user
+        set_cookie = response.headers.get("set-cookie")
+        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if set_cookie:
+            for part in set_cookie.split(";"):
+                if "shop_session-id=" in part:
+                    session_id = part.split("shop_session-id=")[-1].strip()
+                    previous = user_to_session.get(user)
+                    user_to_session[user] = session_id
+                    session_to_user[session_id] = user
+                    if user not in session_timestamps:
+                        session_timestamps[user] = {"created": now_str, "last_seen": now_str}
+                    else:
+                        session_timestamps[user]["last_seen"] = now_str
+                    if previous != session_id:
                         print(f"[INFO] Stored new session for user '{user}': {session_id}")
-                        break
-        else:
-            print(f"[DEBUG] Session already known for user '{user}', ignoring new Set-Cookie.")
+                        print_user_session_table()
+                    break
 
         async with metrics_lock:
             app_state.request_counter += 1
