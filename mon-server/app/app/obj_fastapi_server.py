@@ -20,6 +20,7 @@ from debug_utils import DebugBuffer
 
 http_debug_buffer = DebugBuffer("HTTP Events")
 metrics_lock = Lock()
+session_lock = Lock()  # NEW: Lock for session maps
 config_path = '/etc/service-config/service_paths.json'
 with open(config_path, 'r') as file:
     service_paths = json.load(file)
@@ -38,38 +39,54 @@ session_timestamps = {}
 
 SESSION_TIMEOUT_SECONDS = 60
 
-def cleanup_expired_sessions():
+async def cleanup_expired_sessions():
+    print("[DEBUG] cleanup expired sessions")
     now = datetime.datetime.now()
     expired_users = []
-    for user, timestamps in session_timestamps.items():
-        last_seen_str = timestamps.get("last_seen")
-        if last_seen_str:
-            last_seen = datetime.datetime.strptime(last_seen_str, "%Y-%m-%d %H:%M:%S")
-            if (now - last_seen).total_seconds() > SESSION_TIMEOUT_SECONDS:
-                expired_users.append(user)
+    async with session_lock:
+        for user, timestamps in session_timestamps.items():
+            last_seen_str = timestamps.get("last_seen")
+            if last_seen_str:
+                last_seen = datetime.datetime.strptime(last_seen_str, "%Y-%m-%d %H:%M:%S")
+                if (now - last_seen).total_seconds() > SESSION_TIMEOUT_SECONDS:
+                    expired_users.append(user)
 
-    for user in expired_users:
-        session = user_to_session.pop(user, None)
-        if session:
-            session_to_user.pop(session, None)
-        session_timestamps.pop(user, None)
-        print(f"[CLEANUP] Removed expired session for user '{user}'")
+        for user in expired_users:
+            session = user_to_session.pop(user, None)
+            if session:
+                session_to_user.pop(session, None)
+            session_timestamps.pop(user, None)
+            print(f"[CLEANUP] Removed expired session for user '{user}'")
 
-    if expired_users:
-        print_user_session_table()
+async def print_user_session_table():
+    print(f"\n[SESSION LOG @ {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]")
+    async with session_lock:
+        if not user_to_session:
+            print("[INFO] No active sessions.")
+            return
+        print("=== User to Session Mapping ===")
+        print("{:>5} | {:<36} | {:<36} | {:<20} | {:<20} | {:<20}".format(
+            "#", "User ID", "Session ID", "Created At", "Last Seen", "Last Change"
+        ))
+        print("-" * 170)
+        for i, (user, session) in enumerate(user_to_session.items(), 1):
+            timestamps = session_timestamps.get(user, {})
+            created_at = timestamps.get("created", "-")
+            last_seen = timestamps.get("last_seen", "-")
+            last_change = timestamps.get("last_change", "-")
+            print("{:>5} | {:<36} | {:<36} | {:<20} | {:<20} | {:<20}".format(
+                i, user, session, created_at, last_seen, last_change
+            ))
 
-def print_user_session_table():
-    cleanup_expired_sessions()
-    if not user_to_session:
-        print("[INFO] No active sessions.")
-        return
-    print("\n=== User to Session Mapping ===")
-    print("{:>5} | {:<36} | {:<36} | {:<20} | {:<20}".format("#", "User ID", "Session ID", "Created At", "Last Seen"))
-    print("-" * 130)
-    for i, (user, session) in enumerate(user_to_session.items(), 1):
-        created_at = session_timestamps.get(user, {}).get("created", "-")
-        updated_at = session_timestamps.get(user, {}).get("last_seen", "-")
-        print("{:>5} | {:<36} | {:<36} | {:<20} | {:<20}".format(i, user, session, created_at, updated_at))
+async def periodic_session_log_task():
+    while True:
+        try:
+            print("[PERIODIC] Checking sessions...")
+            await cleanup_expired_sessions()
+            await print_user_session_table()
+        except Exception as e:
+            print(f"[ERROR] Session log task failed: {e}")
+        await asyncio.sleep(10)
 
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None, request: Request = None):
     global metrics_dict
@@ -87,12 +104,12 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     user = request.query_params.get("user", "user1") if request else "user1"
 
     cookies = {}
-    session_id = user_to_session.get(user)
-    if session_id:
-        cookies["shop_session-id"] = session_id
+    async with session_lock:
+        session_id = user_to_session.get(user)
+        if session_id:
+            cookies["shop_session-id"] = session_id
 
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
-
     forward_data = {k: v for k, v in (data or {}).items() if k != "user"}
 
     async with httpx.AsyncClient(timeout=60.0, follow_redirects=False) as client:
@@ -132,55 +149,63 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
         except ValueError:
             response_content = response.text
 
-        set_cookie = response.headers.get("set-cookie")
-        now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        if set_cookie:
-            for part in set_cookie.split(";"):
-                if "shop_session-id=" in part:
-                    session_id = part.split("shop_session-id=")[-1].strip()
-                    previous = user_to_session.get(user)
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if user in session_timestamps:
+        session_timestamps[user]["last_seen"] = now_str
+    set_cookie = response.headers.get("set-cookie")
+    if set_cookie:
+      for part in set_cookie.split(";"):
+        if "shop_session-id=" in part:
+            session_id = part.split("shop_session-id=")[-1].strip()
+            async with session_lock:
+                if user not in user_to_session:
                     user_to_session[user] = session_id
                     session_to_user[session_id] = user
-                    if user not in session_timestamps:
-                        session_timestamps[user] = {"created": now_str, "last_seen": now_str}
-                    else:
-                        session_timestamps[user]["last_seen"] = now_str
-                    if previous != session_id:
-                        print(f"[INFO] Stored new session for user '{user}': {session_id}")
-                        print_user_session_table()
-                    break
+                    session_timestamps[user] = {
+                        "created": now_str,
+                        "last_seen": now_str,
+                        "last_change": now_str  # ✅ ADD THIS FIELD
+                    }
+                    print(f"[INFO] Stored new session for user '{user}': {session_id}")
+                else:
+                    # ✅ Only update last_change if session ID actually changed
+                    if user_to_session[user] != session_id:
+                        session_timestamps[user]["last_change"] = now_str
+                        user_to_session[user] = session_id
+                        session_to_user[session_id] = user
+                    session_timestamps[user]["last_seen"] = now_str
 
-        async with metrics_lock:
-            app_state.request_counter += 1
+    async with metrics_lock:
+        app_state.request_counter += 1
 
-            if response.status_code in [200, 302]:
-                elapsed_ms = (datetime.datetime.now() - request_start_time).total_seconds() * 1000
-                metrics_dict[service_name].dq.append(elapsed_ms)
+        if response.status_code in [200, 302]:
+            elapsed_ms = (datetime.datetime.now() - request_start_time).total_seconds() * 1000
+            metrics_dict[service_name].dq.append(elapsed_ms)
 
-                event_type = infer_event_from_http(method, "/" + service_name)
-                item = None
-                if method == "POST" and data:
-                    item = data.get("product_id")
+            event_type = infer_event_from_http(method, "/" + service_name)
+            item = None
+            if method == "POST" and data:
+                item = data.get("product_id")
 
-                event = {
-                    "type": event_type,
-                    "user": user,
-                    "timestamp": time.time(),
-                }
-                if item:
-                    event["item"] = item
+            event = {
+                "type": event_type,
+                "user": user,
+                "timestamp": time.time(),
+            }
+            if item:
+                event["item"] = item
 
-                routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
-                formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)
-                if formatted_event:
-                    verdicts = app_state.mon_server.evaluate_trace(formatted_event)
-            else:
-                metrics_dict[service_name].failed_requests += 1
-                app_state.req_fail_cnt += 1
+            routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
+            formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)
+            if formatted_event:
+                verdicts = app_state.mon_server.evaluate_trace(formatted_event)
+        else:
+            metrics_dict[service_name].failed_requests += 1
+            app_state.req_fail_cnt += 1
 
-            if app_state.request_counter % 50 == 0:
-                print_metrics(metrics_dict)
-                print_spec_violation_stats()
+        if app_state.request_counter % 50 == 0:
+            print_metrics(metrics_dict)
+            print_spec_violation_stats()
 
     return JSONResponse(content=response_content, status_code=response.status_code)
 
@@ -188,6 +213,7 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
 async def start_pooling_task():
     app_state.mon_server = MonServer(sys.argv[1], sys.argv[2])
     asyncio.create_task(pooling_task())
+    asyncio.create_task(periodic_session_log_task())  # ✅ new: periodic session print task
 
 @app.get("/")
 async def get_index(request: Request):
