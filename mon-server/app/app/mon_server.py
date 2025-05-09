@@ -36,6 +36,18 @@ class MonServer:
         self.buffer_print_threshold = 10
         self.buffer_max_size = 100
         self.buffer_counters = dict()
+        import threading
+        def force_print():
+          print("[DEBUG] Force-print thread is running...")
+          import time
+          while True:
+              time.sleep(5)
+              for verifier_name, buffer in self.verifier_buffers.items():
+                  print(f"\n[FORCE BUFFER DUMP: {verifier_name}]")
+                  for i, t in enumerate(buffer):
+                      print(f"  [{i}] {t}")
+
+        threading.Thread(target=force_print, daemon=True).start()
 
     def __init_verifiers(self):
         for verifier_name in load_verifiers():
@@ -68,31 +80,20 @@ class MonServer:
         print(f"[DEBUG] Evaluating response trace inside MonServer: {trace}")
         return self.evaluate_trace(trace)
 
-    def evaluate_trace(self, trace):
-        v = dict()
 
-        # If dict, process it first
-        if isinstance(trace, dict):
-            routed_verifiers = self._preprocessor.transform_event(trace)
-            formatted_trace = self._preprocessor.format_for_monpoly(trace)
-            if not formatted_trace:
-                print(f"[WARN] Skipping badly formatted trace: {trace}")
-                return {}
-            trace = formatted_trace
-        else:
-            # String already, assume correctly formatted
-            routed_verifiers = list(self._verifiers.keys())  # Send to all if unsure
+    def evaluate_trace(self, trace: str, routed_verifiers: List[str]) -> Dict[str, str]:
+        verdicts = {}
 
         for mon in self._verifiers.keys():
             verifier_name = mon.get_verifier_name()
             if verifier_name in routed_verifiers:
                 mon.get_incoming_queue().put(trace)
+
                 # Initialize buffer if not exists
                 if verifier_name not in self.verifier_buffers:
                     self.verifier_buffers[verifier_name] = deque(maxlen=self.buffer_max_size)
                     self.buffer_counters[verifier_name] = 0
 
-                # Track and print
                 self.verifier_buffers[verifier_name].append(trace)
                 self.buffer_counters[verifier_name] += 1
 
@@ -100,7 +101,7 @@ class MonServer:
                     print(f"\n[Buffer: {verifier_name}] Last {len(self.verifier_buffers[verifier_name])} traces:")
                     for i, t in enumerate(self.verifier_buffers[verifier_name]):
                         print(f"  [{i}] {t}")
-                        self.buffer_counters[verifier_name] = 0
+                    self.buffer_counters[verifier_name] = 0
 
                 try:
                     verdict = mon.get_outgoing_queue().get(timeout=1.0)
@@ -108,15 +109,14 @@ class MonServer:
                     print(f"[WARN] Timeout reading monpoly output for {verifier_name}. Assuming violation.")
                     verdict = 0
 
-                if verdict == 1:
-                    v[verifier_name] = "violated"
-                    self.verifier_stats[verifier_name]["violated"] += 1
-                else:
-                    v[verifier_name] = "satisfied"
-
+                result = "violated" if verdict == 0 else "satisfied"
+                verdicts[verifier_name] = result
                 self.verifier_stats[verifier_name]["last_update"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                if result == "violated":
+                    self.verifier_stats[verifier_name]["violated"] += 1
 
-        return v
+        return verdicts
+
 
     def __send_to_req_ver(self, verdict, mon_proc_enum):
         if self._ver_type == VerificationType.OBJECTIVE.value:

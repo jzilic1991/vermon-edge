@@ -56,19 +56,33 @@ class Preprocessor:
     def cache_emptycart(self, user_id, timestamp):
         self.emptycart_cache[user_id] = timestamp
 
-    def clean_caches(self, current_time=None):
-        if current_time is None:
-            current_time = time.time()
 
-        # Clean additem_cache
-        old_keys = [key for key, ts in self.additem_cache.items() if current_time - ts > self.cache_ttl_seconds]
-        for key in old_keys:
+    def add(verifier: str, trace_str: str):
+        routed.setdefault(verifier, []).append(f"@{int(timestamp)} {trace_str}")
+
+
+    def cleanup_stale_entries(self, current_time: float):
+        ttl_seconds = self.cache_ttl_seconds
+        # Clean up stale additem_cache entries
+        stale_keys = []
+        for key, ts_queue in self.additem_cache.items():
+            while ts_queue and current_time - ts_queue[0] > ttl_seconds:
+                expired = ts_queue.popleft()
+                print(f"[WARN] Evicted stale AddItem timestamp {expired} for key {key} (>{ttl_seconds}s old)")
+            if not ts_queue:
+                stale_keys.append(key)
+        for key in stale_keys:
             del self.additem_cache[key]
 
-        # Clean emptycart_cache
-        old_users = [user for user, ts in self.emptycart_cache.items() if current_time - ts > self.cache_ttl_seconds]
-        for user in old_users:
+        # Clean up stale emptycart_cache entries
+        stale_users = []
+        for user, ts in self.emptycart_cache.items():
+            if current_time - ts > ttl_seconds:
+                print(f"[WARN] Evicted stale EmptyCart timestamp {ts} for user {user} (>{ttl_seconds}s old)")
+                stale_users.append(user)
+        for user in stale_users:
             del self.emptycart_cache[user]
+
 
     def process_get_cart(self, user_id, cart_contents, timestamp):
         events = []
@@ -91,89 +105,54 @@ class Preprocessor:
                 #print(f'[DEBUG] Emitting synthetic: {evt_type} -> {evt_str}')
         
         return events
-
-    def transform_event(self, event):
-        routed_verifiers = set()
+    
+    def transform_event(self, event: dict) -> Dict[str, List[str]]:
+        self.cleanup_stale_entries(current_time=event["timestamp"])
+        print(f"[DEBUG] Processing event with interaction_id: {event.get('interaction_id', 'default')}")
+        routed = {}
         timestamp = event["timestamp"]
         user = event.get("user", "unknown")
-        # print('[DEBUG] Transforming event:', event)
-
+        interaction_id = event.get("interaction_id", "default")
+    
         if event["type"] == "AddItem":
             item_id = event.get("item") or event.get("product_id")
             if item_id:
-                self.additem_cache[(user, item_id)] = timestamp
-                #print(f"[DEBUG] Cached AddItem: ({user}, {item_id}) at {timestamp}")
-                event_str = self.emit_event(timestamp, f'AddItem("{user}", "{item_id}")')
-                routed_verifiers.add("R1.1_latency")
-                print(f'[DEBUG] Routing to verifier: {routed_verifiers}')
-            else:
-                print(f"Warning: AddItem missing item_id! Event: {event}")
-
-        elif event["type"] == "GetCart":
-            cart_contents = event.get("cart", [])
-            events = self.process_get_cart(user, cart_contents, timestamp)
-            for evt_type, evt_str in events:
-                routed_verifiers.update(self.event_to_verifier.get(evt_type, []))
-                print(f"[DEBUG] Routed synthetic event '{evt_type}' to: {self.event_to_verifier.get(evt_type, [])}")
-                #print(f"[DEBUG] Emitting synthetic event to MonPoly: {evt_str}")
-
+                self.additem_cache.setdefault((user, item_id, interaction_id), deque()).append(timestamp)
+            return routed
+    
         elif event["type"] == "EmptyCart":
-            self.cache_emptycart(user, timestamp)
-
-        elif event["type"] == "GetCartEmpty":
-            if user in self.emptycart_cache and event.get("cart", 0) == 0:
+            self.emptycart_cache[user] = timestamp
+            return routed  # ❌ No trace emitted directly
+    
+        elif event["type"] == "GetCart":
+            # cleaned up by cleanup_stale_entries above
+            cart = event.get("cart", [])
+    
+            if user in self.emptycart_cache and len(cart) == 0:
                 d = round(timestamp - self.emptycart_cache[user], 3)
-                event_str = self.emit_event(timestamp, f'cart_empty_latency("{user}", {d})')
-                routed_verifiers.add("R1.2_empty_cart")
-                print(f'[DEBUG] Routing to verifier: {routed_verifiers}')
-
+                add("R1.2_empty_cart_latency", f'cart_empty_latency("{user}", {d})')
+                del self.emptycart_cache[user]
+    
+            for item in cart:
+                key = (user, item, interaction_id)
+                if key in self.additem_cache and self.additem_cache[key]:
+                    add_ts = self.additem_cache[key].popleft()
+                    d = round(timestamp - add_ts, 3)
+                    add("R1.1_latency", f'reflect_latency("{user}", "{item}", {d})')
+    
+            add("R1.2_empty_cart_sequence", f'GetCart("{user}")')
+    
         elif event["type"] == "CartOp":
             label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"
-            event_str = self.emit_event(timestamp, f'CartOp("{user}", "{event["op"]}", "{label}")')
-            routed_verifiers.add("R1.3_failure_rate")
-            print(f'[DEBUG] Routing to verifier: {routed_verifiers}')
-
+            op = event.get("op", "unknown")
+            add("R1.3_failure_rate", f'CartOp("{user}", "{op}", "{label}")')
+    
         elif event["type"] == "Metrics":
             cpu, mem = event.get("cpu", 0.0), event.get("mem", 0.0)
-            event_str = self.emit_event(timestamp, f'CartServiceUsage({cpu}, {mem})')
-            routed_verifiers.add("R1.4_resource_usage")
-            print(f'[DEBUG] Routing to verifier: {routed_verifiers}')
+            add("R1.4_resource_usage", f'CartServiceUsage({cpu}, {mem})')
+    
+        return routed
 
-        # Also route based on raw primitive event type if mapped
-        if event["type"] in self.event_to_verifier:
-            routed_verifiers.update(self.event_to_verifier[event["type"]])
-            print(f"[DEBUG] Routed raw event type '{event['type']}' to: {self.event_to_verifier.get(event['type'], [])}")
-        
-        return list(routed_verifiers)
-
-    def format_for_monpoly(self, event):
-        timestamp = event.get("timestamp", time.time())
-        user = event.get("user", "unknown")
-
-        if event["type"] == "AddItem":
-            item_id = event.get("item") or event.get("product_id", "unknown")
-            return self.emit_event(timestamp, f'AddItem("{user}", "{item_id}")')
-
-        elif event["type"] == "GetCart":
-            return self.emit_event(timestamp, f'GetCart("{user}")')
-
-        elif event["type"] == "EmptyCart":
-            return self.emit_event(timestamp, f'EmptyCart("{user}")')
-
-        elif event["type"] == "GetCartEmpty":
-            return self.emit_event(timestamp, f'GetCartEmpty("{user}")')
-
-        elif event["type"] == "CartOp":
-            label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"
-            return self.emit_event(timestamp, f'CartOp("{user}", "{event["op"]}", "{label}")')
-
-        elif event["type"] == "Metrics":
-            cpu, mem = event.get("cpu", 0.0), event.get("mem", 0.0)
-            return self.emit_event(timestamp, f'CartServiceUsage({cpu}, {mem})')
-
-        else:
-            # print(f"Warning: Unknown event type for formatting: {event}")
-            return None
 
     def cache_r1_verdict(self, user, subreq, verdict):
         if not hasattr(self, "r1_verdict_cache"):
@@ -181,7 +160,8 @@ class Preprocessor:
         if user not in self.r1_verdict_cache:
             self.r1_verdict_cache[user] = {}
         self.r1_verdict_cache[user][subreq] = verdict
-   
+
+
     def synthesize_r1_event(self, user, timestamp=None):
         if user not in self.r1_verdict_cache:
             return None

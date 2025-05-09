@@ -102,7 +102,7 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     params = dict(request.query_params) if request else None
 
     user = request.query_params.get("user", "user1") if request else "user1"
-
+    request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
     cookies = {}
     async with session_lock:
         session_id = user_to_session.get(user)
@@ -152,6 +152,7 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if user in session_timestamps:
         session_timestamps[user]["last_seen"] = now_str
+    
     set_cookie = response.headers.get("set-cookie")
     if set_cookie:
       for part in set_cookie.split(";"):
@@ -190,15 +191,17 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             event = {
                 "type": event_type,
                 "user": user,
+                "interaction_id": request_id,
                 "timestamp": time.time(),
             }
             if item:
                 event["item"] = item
-
-            routed_verifiers = app_state.mon_server._preprocessor.transform_event(event)
-            formatted_event = app_state.mon_server._preprocessor.format_for_monpoly(event)
-            if formatted_event:
-                verdicts = app_state.mon_server.evaluate_trace(formatted_event)
+            
+            verifier_events = app_state.mon_server._preprocessor.transform_event(event)
+            #print("[DEBUG] Formatted event: " + str(formatted_event))
+            for verifier, trace_list in verifier_events.items():
+                for trace in trace_list:
+                    app_state.mon_server.evaluate_trace(trace, [verifier])
         else:
             metrics_dict[service_name].failed_requests += 1
             app_state.req_fail_cnt += 1
