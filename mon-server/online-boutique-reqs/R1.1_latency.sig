@@ -1,1 +1,1 @@
-reflect_latency(user:string, item:string, latency:float)
+reflect_latency(user:string, latency:float)

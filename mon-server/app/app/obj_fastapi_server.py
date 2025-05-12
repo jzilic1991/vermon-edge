@@ -18,6 +18,7 @@ from asyncio import Lock
 from http_to_event_mapper import infer_event_from_http
 from debug_utils import DebugBuffer
 
+
 http_debug_buffer = DebugBuffer("HTTP Events")
 metrics_lock = Lock()
 session_lock = Lock()  # NEW: Lock for session maps
@@ -88,6 +89,7 @@ async def periodic_session_log_task():
             print(f"[ERROR] Session log task failed: {e}")
         await asyncio.sleep(10)
 
+
 async def forward_request(service_name: str, method: str, data: dict = None, path_params: dict = None, request: Request = None):
     global metrics_dict
 
@@ -102,8 +104,8 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     params = dict(request.query_params) if request else None
 
     user = request.query_params.get("user", "user1") if request else "user1"
-    request_id = request.headers.get("x-request-id", str(uuid.uuid4()))
     cookies = {}
+    session_id = None
     async with session_lock:
         session_id = user_to_session.get(user)
         if session_id:
@@ -157,7 +159,8 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
     if set_cookie:
       for part in set_cookie.split(";"):
         if "shop_session-id=" in part:
-            session_id = part.split("shop_session-id=")[-1].strip()
+            new_session_id = part.split("shop_session-id=")[-1].strip()
+            session_id = new_session_id
             async with session_lock:
                 if user not in user_to_session:
                     user_to_session[user] = session_id
@@ -191,7 +194,7 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             event = {
                 "type": event_type,
                 "user": user,
-                "interaction_id": request_id,
+                "session": session_id,
                 "timestamp": time.time(),
             }
             if item:

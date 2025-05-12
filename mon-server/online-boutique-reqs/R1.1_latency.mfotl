@@ -1,5 +1,5 @@
-(avglat <- AVG d; ONCE[0,60s] reflect_latency(u, i, d) AND ts(t))
+(avglat <- AVG d; ONCE[0,60s] reflect_latency(u, d) AND ts(t))
 AND 
-(maxlat <- MAX d; u ONCE[0,1s] reflect_latency(u, i, d) AND ts(t))
+(maxlat <- MAX d; u ONCE[0,1s] reflect_latency(u, d) AND ts(t))
 AND
 (maxlat > 0.5 OR avglat > 0.2)

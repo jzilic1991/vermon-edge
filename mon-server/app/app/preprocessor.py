@@ -1,6 +1,7 @@
 import time
 from debug_utils import DebugBuffer
 from collections import deque
+from typing import Dict, List
 synthetic_buffer = DebugBuffer("Synthetic Events")
 
 class Preprocessor:
@@ -19,7 +20,7 @@ class Preprocessor:
         self.output_path = output_path
         self.additem_cache = {}        # (user, item) -> timestamp
         self.emptycart_cache = {}      # user -> timestamp
-        self.cache_ttl_seconds = 300   # 5 minutes TTL
+        self.cache_ttl_seconds = 60   # 1 minutes TTL
         self.event_to_verifier = {
           "reflect_latency": ["R1.1_latency"],
           "cart_empty_latency": ["R1.2_empty_cart_latency"],
@@ -32,6 +33,7 @@ class Preprocessor:
         self.fifo_limit = 100
         self.fifo_print_every = 10
         self.event_counter = {name: 0 for name in self.event_to_verifier.keys()}
+
 
     def emit_event(self, timestamp: int, event_str: str) -> str:
         # Determine which verifiers this event should be sent to
@@ -57,7 +59,7 @@ class Preprocessor:
         self.emptycart_cache[user_id] = timestamp
 
 
-    def add(verifier: str, trace_str: str):
+    def add(self, routed: dict, verifier: str, timestamp: float, trace_str: str):
         routed.setdefault(verifier, []).append(f"@{int(timestamp)} {trace_str}")
 
 
@@ -84,40 +86,18 @@ class Preprocessor:
             del self.emptycart_cache[user]
 
 
-    def process_get_cart(self, user_id, cart_contents, timestamp):
-        events = []
-        #print('[DEBUG] Processing GetCart for synthetic events')
-        #print(f"[DEBUG] GetCart contents: {cart_contents}")
-        #print(f"[DEBUG] AddItem cache keys: {list(self.additem_cache.keys())}")
-        if user_id in self.emptycart_cache and len(cart_contents) == 0:
-            d = round(timestamp - self.emptycart_cache[user_id], 3)
-            evt_type = "cart_empty_latency"
-            evt_str = self.emit_event(timestamp, f'cart_empty_latency("{user_id}", {d})')
-            events.append((evt_type, evt_str))
-            #print(f'[DEBUG] Emitting synthetic: {evt_type} -> {evt_str}')
-        
-        for item_id in cart_contents:
-            if (user_id, item_id) in self.additem_cache:
-                d = round(timestamp - self.additem_cache[(user_id, item_id)], 3)
-                evt_type = "reflect_latency"
-                evt_str = self.emit_event(timestamp, f'reflect_latency("{user_id}", "{item_id}", {d})')
-                events.append((evt_type, evt_str))
-                #print(f'[DEBUG] Emitting synthetic: {evt_type} -> {evt_str}')
-        
-        return events
-    
     def transform_event(self, event: dict) -> Dict[str, List[str]]:
         self.cleanup_stale_entries(current_time=event["timestamp"])
-        print(f"[DEBUG] Processing event with interaction_id: {event.get('interaction_id', 'default')}")
         routed = {}
         timestamp = event["timestamp"]
         user = event.get("user", "unknown")
-        interaction_id = event.get("interaction_id", "default")
-    
+        session = event.get("session", "00000000000000000000000000")
+        
         if event["type"] == "AddItem":
             item_id = event.get("item") or event.get("product_id")
             if item_id:
-                self.additem_cache.setdefault((user, item_id, interaction_id), deque()).append(timestamp)
+                self.additem_cache.setdefault((user, session), deque()).append(timestamp)
+            print(f"[DEBUG] Cached AddItem: user={user}, session={session}")
             return routed
     
         elif event["type"] == "EmptyCart":
@@ -130,27 +110,29 @@ class Preprocessor:
     
             if user in self.emptycart_cache and len(cart) == 0:
                 d = round(timestamp - self.emptycart_cache[user], 3)
-                add("R1.2_empty_cart_latency", f'cart_empty_latency("{user}", {d})')
-                del self.emptycart_cache[user]
+                self.add(routed, "R1.2_empty_cart_latency", timestamp, f'cart_empty_latency("{user}", {d})')
+                if not self.emptycart_cache[key]:
+                    del self.emptycart_cache[key]  # ✅ Clean up empty deque
     
-            for item in cart:
-                key = (user, item, interaction_id)
-                if key in self.additem_cache and self.additem_cache[key]:
-                    add_ts = self.additem_cache[key].popleft()
-                    d = round(timestamp - add_ts, 3)
-                    add("R1.1_latency", f'reflect_latency("{user}", "{item}", {d})')
-    
-            add("R1.2_empty_cart_sequence", f'GetCart("{user}")')
-    
+            key = (user, session)
+            if key in self.additem_cache and self.additem_cache[key]:
+                add_ts = self.additem_cache[key].popleft()
+                d = round(timestamp - add_ts, 3)
+                self.add(routed, "R1.1_latency", timestamp, f'reflect_latency("{user}", {d})')
+                if not self.additem_cache[key]:
+                    del self.additem_cache[key]  # ✅ Clean up empty deque
+
+            self.add(routed, "R1.2_empty_cart_sequence", timestamp, f'GetCart("{user}")')
+        
         elif event["type"] == "CartOp":
             label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"
             op = event.get("op", "unknown")
-            add("R1.3_failure_rate", f'CartOp("{user}", "{op}", "{label}")')
-    
+            self.add(routed, "R1.3_failure_rate", timestamp, f'CartOp("{user}", "{op}", "{label}")')
+        
         elif event["type"] == "Metrics":
             cpu, mem = event.get("cpu", 0.0), event.get("mem", 0.0)
-            add("R1.4_resource_usage", f'CartServiceUsage({cpu}, {mem})')
-    
+            self.add(routed, "R1.4_resource_usage", timestamp, f'CartServiceUsage({cpu}, {mem})')
+        
         return routed
 
 

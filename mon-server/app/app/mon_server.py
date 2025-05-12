@@ -8,6 +8,7 @@ from preprocessor import Preprocessor
 import requests
 from collections import deque
 from debug_utils import DebugBuffer
+from typing import Dict, List
 
 def get_tr_patterns(ver_type):
     if ver_type == VerificationType.REQUIREMENT.value:
