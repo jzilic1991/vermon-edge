@@ -41,7 +41,7 @@ session_timestamps = {}
 SESSION_TIMEOUT_SECONDS = 60
 
 async def cleanup_expired_sessions():
-    print("[DEBUG] cleanup expired sessions")
+    #print("[DEBUG] cleanup expired sessions")
     now = datetime.datetime.now()
     expired_users = []
     async with session_lock:
@@ -201,9 +201,10 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
                 event["item"] = item
             
             verifier_events = app_state.mon_server._preprocessor.transform_event(event)
-            #print("[DEBUG] Formatted event: " + str(formatted_event))
+            # print("[DEBUG] Verifier events: " + str(verifier_events))
             for verifier, trace_list in verifier_events.items():
                 for trace in trace_list:
+                    #print(f"Sending to {verifier} a trace: {trace}")
                     app_state.mon_server.evaluate_trace(trace, [verifier])
         else:
             metrics_dict[service_name].failed_requests += 1
@@ -215,11 +216,13 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
 
     return JSONResponse(content=response_content, status_code=response.status_code)
 
+
 @app.on_event("startup")
 async def start_pooling_task():
     app_state.mon_server = MonServer(sys.argv[1], sys.argv[2])
     asyncio.create_task(pooling_task())
     asyncio.create_task(periodic_session_log_task())  # ✅ new: periodic session print task
+
 
 @app.get("/")
 async def get_index(request: Request):

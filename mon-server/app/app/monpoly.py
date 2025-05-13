@@ -28,7 +28,8 @@ class Monpoly(Process):
             "-sig", f"online-boutique-reqs/{self._requirement_to_verify}.sig",
             "-formula", f"online-boutique-reqs/{self._requirement_to_verify}.mfotl",
             stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE  # 👈 important for debugging
         )
         print(f"[Monpoly] {self._requirement_to_verify} process is started!")
 
@@ -46,23 +47,36 @@ class Monpoly(Process):
                 print(f"[ERROR] Unexpected trace type: {type(trace)}")
                 continue
 
-            proc.stdin.write(trace_str.encode('utf-8'))
-            await proc.stdin.drain()
+            try:
+                # 👇 Wrap writing in try-except
+                proc.stdin.write(trace_str.encode('utf-8'))
+                await proc.stdin.drain()
+            except (BrokenPipeError, ConnectionResetError):
+                print(f"[ERROR] MonPoly subprocess for {self._requirement_to_verify} terminated unexpectedly (BrokenPipe).")
+                _, stderr = await proc.communicate()
+                print(f"[MonPoly STDERR for {self._requirement_to_verify}]:\n{stderr.decode()}")
+                self._v_q.put(0)
+                return  # Exit loop / kill process safely
+            except Exception as e:
+                print(f"[ERROR] Failed to send trace to MonPoly ({self._requirement_to_verify}): {str(e)}")
+                self._v_q.put(0)
+                return
 
             try:
                 line = await asyncio.wait_for(proc.stdout.readline(), timeout=0.1)
-                pattern = r"\s*@\d+\.\d+\s+\(time point \d+\):.*"
-                match = re.match(pattern, line.decode())
+                decoded = line.decode().strip()
+                pattern = r"\s*@\d+(\.\d+)?\s+\(time point \d+\):.*"
+                match = re.match(pattern, decoded)
 
                 if match:
                     self._v_q.put(1)  # 1 = satisfied
                 else:
-                    print(f"[WARN] Unexpected monpoly output: {line.decode().strip()}")
+                    print(f"[WARN] Unexpected MonPoly output for {self._requirement_to_verify}: {decoded}")
                     self._v_q.put(0)  # 0 = violated
             except asyncio.TimeoutError:
-                print(f"[WARN] Timeout reading monpoly output for {self._requirement_to_verify}. Assuming violation.")
+                print(f"[WARN] Timeout reading MonPoly output for {self._requirement_to_verify}. Assuming violation.")
                 self._v_q.put(0)
             except Exception as e:
-                print(f"[ERROR] Unexpected error in monpoly process for {self._requirement_to_verify}: {str(e)}")
+                print(f"[ERROR] Unexpected error reading from MonPoly for {self._requirement_to_verify}: {str(e)}")
                 self._v_q.put(0)
 

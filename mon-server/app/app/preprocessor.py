@@ -29,10 +29,15 @@ class Preprocessor:
           "CartOp": ["R1.3_failure_rate"],
           "CartServiceUsage": ["R1.4_resource_usage"]
         }
-        self.fifo_buffers = {name: [] for name in self.event_to_verifier.keys()}
-        self.fifo_limit = 100
+        
+        verifier_names = set()
+        for ver_list in self.event_to_verifier.values():
+            verifier_names.update(ver_list)
+
+        # ✅ Create FIFO buffers and counters per verifier
+        self.fifo_buffers = {name: deque(maxlen=100) for name in verifier_names}
+        self.event_counter = {name: 0 for name in verifier_names}
         self.fifo_print_every = 10
-        self.event_counter = {name: 0 for name in self.event_to_verifier.keys()}
 
 
     def emit_event(self, timestamp: int, event_str: str) -> str:
@@ -42,25 +47,27 @@ class Preprocessor:
 
         for verifier in verifiers:
             if verifier not in self.fifo_buffers:
-                self.fifo_buffers[verifier] = deque(maxlen=100)
-                self.event_counter[verifier] = 0
+                print(f"[ERROR] Verifier '{verifier}' not registered in fifo_buffers!")
+                continue  # Or raise an error to enforce configuration correctness
 
-            self.fifo_buffers[verifier].append(f"{timestamp} {event_str}")
+            self.fifo_buffers[verifier].append(f"@{timestamp} {event_str}")
             self.event_counter[verifier] += 1
 
-            if self.event_counter[verifier] % 10 == 0:
+            if self.event_counter[verifier] % self.fifo_print_every == 0:
                 print(f"\n[Preprocessor] Last {len(self.fifo_buffers[verifier])} entries for verifier '{verifier}':")
                 for entry in list(self.fifo_buffers[verifier]):
                     print(entry)
 
-        return f"{timestamp} {event_str}"
+        return f"@{timestamp} {event_str}"
+
 
     def cache_emptycart(self, user_id, timestamp):
         self.emptycart_cache[user_id] = timestamp
 
 
     def add(self, routed: dict, verifier: str, timestamp: float, trace_str: str):
-        routed.setdefault(verifier, []).append(f"@{int(timestamp)} {trace_str}")
+        event = self.emit_event(timestamp, trace_str)
+        routed.setdefault(verifier, []).append(event)
 
 
     def cleanup_stale_entries(self, current_time: float):
@@ -70,7 +77,7 @@ class Preprocessor:
         for key, ts_queue in self.additem_cache.items():
             while ts_queue and current_time - ts_queue[0] > ttl_seconds:
                 expired = ts_queue.popleft()
-                print(f"[WARN] Evicted stale AddItem timestamp {expired} for key {key} (>{ttl_seconds}s old)")
+                #print(f"[WARN] Evicted stale AddItem timestamp {expired} for key {key} (>{ttl_seconds}s old)")
             if not ts_queue:
                 stale_keys.append(key)
         for key in stale_keys:
@@ -80,7 +87,7 @@ class Preprocessor:
         stale_users = []
         for user, ts in self.emptycart_cache.items():
             if current_time - ts > ttl_seconds:
-                print(f"[WARN] Evicted stale EmptyCart timestamp {ts} for user {user} (>{ttl_seconds}s old)")
+                #print(f"[WARN] Evicted stale EmptyCart timestamp {ts} for user {user} (>{ttl_seconds}s old)")
                 stale_users.append(user)
         for user in stale_users:
             del self.emptycart_cache[user]
@@ -97,7 +104,7 @@ class Preprocessor:
             item_id = event.get("item") or event.get("product_id")
             if item_id:
                 self.additem_cache.setdefault((user, session), deque()).append(timestamp)
-            print(f"[DEBUG] Cached AddItem: user={user}, session={session}")
+            #print(f"[DEBUG] Cached AddItem: user={user}, session={session}")
             return routed
     
         elif event["type"] == "EmptyCart":

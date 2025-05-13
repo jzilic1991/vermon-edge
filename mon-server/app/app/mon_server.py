@@ -9,6 +9,8 @@ import requests
 from collections import deque
 from debug_utils import DebugBuffer
 from typing import Dict, List
+import threading
+import traceback
 
 def get_tr_patterns(ver_type):
     if ver_type == VerificationType.REQUIREMENT.value:
@@ -31,28 +33,13 @@ class MonServer:
         self._tr_patterns = get_tr_patterns(self._ver_type)
         self._req_to_obj_map = Util.get_req_pattern_obj_process_dict()
         self.verifier_stats = dict()
-
         self.__init_verifiers()
-        self.verifier_buffers = dict()
-        self.buffer_print_threshold = 10
-        self.buffer_max_size = 100
-        self.buffer_counters = dict()
-        import threading
-        def force_print():
-          print("[DEBUG] Force-print thread is running...")
-          import time
-          while True:
-              time.sleep(5)
-              for verifier_name, buffer in self.verifier_buffers.items():
-                  print(f"\n[FORCE BUFFER DUMP: {verifier_name}]")
-                  for i, t in enumerate(buffer):
-                      print(f"  [{i}] {t}")
 
-        threading.Thread(target=force_print, daemon=True).start()
 
     def __init_verifiers(self):
         for verifier_name in load_verifiers():
             self.__start_verifier(verifier_name)
+
 
     def __start_verifier(self, verifier_name):
         mon = Monpoly(Queue(), Queue(), verifier_name)
@@ -88,22 +75,8 @@ class MonServer:
         for mon in self._verifiers.keys():
             verifier_name = mon.get_verifier_name()
             if verifier_name in routed_verifiers:
+                print(f"[DEBUG] Sending {trace} to verifier {verifier_name}")
                 mon.get_incoming_queue().put(trace)
-
-                # Initialize buffer if not exists
-                if verifier_name not in self.verifier_buffers:
-                    self.verifier_buffers[verifier_name] = deque(maxlen=self.buffer_max_size)
-                    self.buffer_counters[verifier_name] = 0
-
-                self.verifier_buffers[verifier_name].append(trace)
-                self.buffer_counters[verifier_name] += 1
-
-                if self.buffer_counters[verifier_name] >= self.buffer_print_threshold:
-                    print(f"\n[Buffer: {verifier_name}] Last {len(self.verifier_buffers[verifier_name])} traces:")
-                    for i, t in enumerate(self.verifier_buffers[verifier_name]):
-                        print(f"  [{i}] {t}")
-                    self.buffer_counters[verifier_name] = 0
-
                 try:
                     verdict = mon.get_outgoing_queue().get(timeout=1.0)
                 except Exception:
