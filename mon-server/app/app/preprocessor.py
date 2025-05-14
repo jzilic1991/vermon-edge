@@ -1,4 +1,5 @@
 import time
+import re
 from debug_utils import DebugBuffer
 from collections import deque
 from typing import Dict, List
@@ -91,6 +92,11 @@ class Preprocessor:
                 stale_users.append(user)
         for user in stale_users:
             del self.emptycart_cache[user]
+   
+
+    def extract_cart_quantity_from_html(self, html: str) -> int:
+        match = re.search(r'Cart\s*\((\d+)\)', html)
+        return int(match.group(1)) if match else 0
 
 
     def transform_event(self, event: dict) -> Dict[str, List[str]]:
@@ -113,9 +119,9 @@ class Preprocessor:
     
         elif event["type"] == "GetCart":
             # cleaned up by cleanup_stale_entries above
-            cart = event.get("cart", [])
+            quantity = event.get("quantity", 0)
     
-            if user in self.emptycart_cache and len(cart) == 0:
+            if user in self.emptycart_cache and quantity == 0:
                 d = round(timestamp - self.emptycart_cache[user], 3)
                 self.add(routed, "R1.2_empty_cart_latency", timestamp, f'cart_empty_latency("{user}", {d})')
                 if not self.emptycart_cache[key]:
@@ -129,7 +135,7 @@ class Preprocessor:
                 if not self.additem_cache[key]:
                     del self.additem_cache[key]  # ✅ Clean up empty deque
 
-            self.add(routed, "R1.2_empty_cart_sequence", timestamp, f'GetCart("{user}")')
+            self.add(routed, "R1.2_empty_cart_sequence", timestamp, f'GetCart("{user}", {quantity})')
         
         elif event["type"] == "CartOp":
             label = "fail" if event["status"] < 200 or event["status"] >= 300 else "ok"

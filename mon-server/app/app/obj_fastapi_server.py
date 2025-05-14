@@ -11,6 +11,7 @@ import json
 import uvicorn
 import asyncio
 import time
+import re
 from util import Util, MetricsDeque, pooling_task, construct_event_trace, evaluate_event_traces, print_metrics, print_spec_violation_stats
 from constants import ObjectiveProcName, REQ_VERIFIER_SERVICE_URL
 from state import app_state
@@ -187,10 +188,17 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             metrics_dict[service_name].dq.append(elapsed_ms)
 
             event_type = infer_event_from_http(method, "/" + service_name)
-            item = None
+            quantity, item = None, None
             if method == "POST" and data:
                 item = data.get("product_id")
-
+            
+            if service_name == "cart" and method.upper() == "GET":
+                try:
+                    quantity = app_state.mon_server._preprocessor.extract_cart_quantity_from_html(response.text)
+                    # print(f'[DEBUG][MONPOLY] GetCart("{user}", {quantity})')
+                except Exception as e:
+                    print(f'[DEBUG][MONPOLY] Failed to parse cart HTML: {e}')
+            
             event = {
                 "type": event_type,
                 "user": user,
@@ -199,9 +207,13 @@ async def forward_request(service_name: str, method: str, data: dict = None, pat
             }
             if item:
                 event["item"] = item
+
+            if quantity:
+                event["quantity"] = quantity
             
             verifier_events = app_state.mon_server._preprocessor.transform_event(event)
             # print("[DEBUG] Verifier events: " + str(verifier_events))
+            
             for verifier, trace_list in verifier_events.items():
                 for trace in trace_list:
                     #print(f"Sending to {verifier} a trace: {trace}")
